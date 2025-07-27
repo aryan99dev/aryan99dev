@@ -13,7 +13,7 @@
 
 <h3 align="left">Connect with me:</h3>
 <p align="left">
-<a href="https://linkedin.com/in/aryan sharma" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/linked-in-alt.svg" alt="aryan sharma" height="30" width="40" /></a>
+<a href="www.linkedin.com/in/aryan--sharma-6-sd97" target="blank"><img align="center" src="https://raw.githubusercontent.com/rahuldkjain/github-profile-readme-generator/master/src/images/icons/Social/linked-in-alt.svg" alt="aryan sharma" height="30" width="40" /> LinKedIn</a>
 </p>
 
 <h3 align="left">Languages and Tools:</h3>
