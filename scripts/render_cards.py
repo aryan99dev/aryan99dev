@@ -243,7 +243,7 @@ def contribution_card(stats: dict, delay: float) -> None:
     svg = svg_start(900, 290, delay, "Contribution activity by month")
     svg += '<g class="enter"><text x="34" y="43" class="white" font-size="23" font-weight="700">CONTRIBUTION PULSE</text>'
     svg += f'<text x="34" y="67" class="muted" font-size="12">A year of showing up, one commit at a time.</text>'
-    metrics = [(f"{stats["streak"]}", "DAY STREAK"), (f"{stats["active_days"]}", "ACTIVE DAYS"), (stats["busiest"].upper(), "BUSIEST DAY")]
+    metrics = [(str(stats["streak"]), "DAY STREAK"), (str(stats["active_days"]), "ACTIVE DAYS"), (stats["busiest"].upper(), "BUSIEST DAY")]
     for i, (value, label) in enumerate(metrics):
         x = 500 + i * 125
         svg += f'<text x="{x}" y="42" class="accent" font-size="24" font-weight="700">{escape(value)}</text><text x="{x}" y="62" class="muted mono" font-size="9">{label}</text>'
