@@ -32,6 +32,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/render_cards.py --refresh-contributions
 
+      - name: Verify fonts were embedded
+        run: grep -q "@font-face" cards/hero.svg || echo "::warning::No embedded fonts found in cards/hero.svg (Google Fonts fetch or pyftsubset failed)"
+
       - name: Commit refreshed cards
         run: |
           git config user.name "github-actions[bot]"
