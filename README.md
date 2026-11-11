@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="cards/hero.svg" width="100%" alt="Aryan Sharma, Full-stack developer  ·  BCA student" />
+<img src="cards/hero.svg" width="100%" alt="Aryan Sharma - FULLSTACK DEVELOPER · BCA STUDENT" />
 
-<a href="https://github.com/aryan99dev/Portfolio"><img src="cards/tile-build.svg" width="32.5%" alt="Build — view the portfolio repository" /></a>
-<a href="https://github.com/aryan99dev?tab=repositories"><img src="cards/tile-explore.svg" width="32.5%" alt="Explore — all repositories" /></a>
-<a href="mailto:aryan99dev00@gmail.com"><img src="cards/tile-connect.svg" width="32.5%" alt="Connect — send an email" /></a>
+<a href="https://github.com/aryan99dev/Portfolio"><img src="cards/tile-build.svg" width="32.5%" alt="Build — 3 featured projects" /></a>
+<a href="https://github.com/aryan99dev?tab=repositories"><img src="cards/tile-explore.svg" width="32.5%" alt="Brand — all repositories" /></a>
+<a href="mailto:aryan99dev00@gmail.com"><img src="cards/tile-connect.svg" width="32.5%" alt="Learn — BCA student at Shoolini" /></a>
 
 <img src="cards/contributions.svg" width="100%" alt="Monthly contributions, streak, active days and busiest weekday" />
 
@@ -12,13 +12,13 @@
 
 ## Selected work
 
-<a href="https://github.com/aryan99dev/Portfolio"><img src="cards/repo-1-portfolio.svg" width="100%" alt="Portfolio — Next.js · React · TypeScript" /></a>
-<a href="https://github.com/aryan99dev/Prism"><img src="cards/repo-2-prism.svg" width="100%" alt="Prism — React · TypeScript · Vite · Tailwind CSS · Appwrite" /></a>
-<a href="https://github.com/aryan99dev/Movie-App"><img src="cards/repo-3-movie-app.svg" width="100%" alt="Movie-App — React · Vite" /></a>
+<a href="https://github.com/aryan99dev/Portfolio"><img src="cards/repo-1-portfolio.svg" width="100%" alt="Portfolio - Next.js · React · TypeScript" /></a>
+<a href="https://github.com/aryan99dev/Prism"><img src="cards/repo-2-prism.svg" width="100%" alt="Prism - React · TypeScript · Vite · Tailwind · Appwrite" /></a>
+<a href="https://github.com/aryan99dev/Movie-App"><img src="cards/repo-3-movie-app.svg" width="100%" alt="Movie-App - React · Vite · Tailwind CSS" /></a>
 
 <div align="center">
 
-<img src="cards/contribution-graph.svg" width="100%" alt="Contribution graph — last 52 weeks" />
+<img src="cards/contribution-graph.svg" width="100%" alt="Contribution graph - last 52 weeks" />
 
 [GitHub](https://github.com/aryan99dev) · [Portfolio](https://github.com/aryan99dev/Portfolio) · [Email](mailto:aryan99dev00@gmail.com)
 

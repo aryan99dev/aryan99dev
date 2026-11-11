@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 """Render self-contained animated SVG cards for aryan99dev's GitHub profile README.
 
-Design language: terminal-meets-editorial (inspired by avivashishta.com)
-─────────────────────────────────────────────────────────────────────────
-  • Dark terminal base  (#0d1117) + warm paper accent (#fdfbf7 highlights)
-  • Instrument Serif (editorial headings) + JetBrains Mono (terminal metadata)
-  • Three-colour accent system:  BUILD → blue  BRAND/CONNECT → red  EXPLORE/LEARN → amber
-  • Cards feel like terminal windows: rounded rects with a subtle header bar,
-    prompt-string decoration, and line-by-line typewriter entrance animations
-  • ASCII/neofetch side card rendered as monospace text grid in hero
-  • All motion: CSS keyframes (rise, type, blink, bar-grow) + SMIL (bar grow,
-    cursor blink, cell fade) so GitHub's img proxy keeps it
-  • prefers-reduced-motion: kills all animation, final frame is always visible
-  • Fonts subset via pyftsubset → base64 WOFF2 data URIs (no network in browser)
-
-Usage
-─────
-  python scripts/render_cards.py                           # render from JSON
-  python scripts/render_cards.py --refresh-contributions  # fetch + render
-  python scripts/render_cards.py --skip-fonts             # fast, system fonts
-  STATIC=1 python scripts/render_cards.py --skip-fonts   # screenshot mode
+Design system: High-contrast Manga Ink Noir aesthetic matching the avatar portrait
+──────────────────────────────────────────────────────────────────────────────────
+  • Tactile crisp white paper cards (#ffffff) with large rounded corners (rx="28")
+  • Editorial typography: Instrument Serif (huge Roman name + Italic surname, size 78px)
+  • Clean modern sans-serif for descriptions and bio
+  • Monospace for tags, links, and metadata
+  • Embedded high-resolution anime ink portrait on the right of the Hero card
+  • Three monochromatic noir tiles:
+      - BUILD: Pitch Black (#09090b) -> "3 projects" (white text)
+      - BRAND: Deep Charcoal (#18181b) -> "10+ repos" (white text)
+      - LEARN: Stark White (#ffffff) -> "BCA '26" (black ink text)
+  • Contributions chart in clean paper aesthetic with solid black bars (#09090b)
+  • GitHub contribution graph in 5-level monochrome ink scale (#f4f4f5 to #09090b)
+  • CSS keyframes (rise, fade) + SMIL (bar grow, opacity stagger)
+  • prefers-reduced-motion: disables all animations, static frame rendered
+  • STATIC=1: frozen final frame, outputs to cards-static/ + preview.html
 """
 from __future__ import annotations
 
@@ -27,6 +24,7 @@ import argparse
 import base64
 import calendar
 import datetime as dt
+import io
 import json
 import os
 import re
@@ -44,110 +42,92 @@ from xml.sax.saxutils import escape
 ROOT   = Path(__file__).resolve().parents[1]
 STATIC = os.getenv("STATIC", "0") == "1"
 OUT    = ROOT / ("cards-static" if STATIC else "cards")
-DATA_FILE           = ROOT / "contribution-data.json"
-PORTRAIT_CANDIDATES = [ROOT / "assets" / "profile.png", ROOT / "assets" / "profile.jpg"]
+DATA_FILE       = ROOT / "contribution-data.json"
+ASSETS_DIR      = ROOT / "assets"
+AVATAR_PATH     = ASSETS_DIR / "avatar.png"
 
 # ── identity ──────────────────────────────────────────────────────────────────
 USERNAME = "aryan99dev"
-NAME     = "Aryan Sharma"
-ROLE     = "Full-stack developer  ·  BCA student"
-INTRO    = "I build modern web apps, learn new technologies and create useful digital experiences."
-META     = "Shoolini University  ·  India"
-EMAIL    = "aryan99dev00@gmail.com"
+FIRST_NAME = "Aryan"
+LAST_NAME  = "Sharma"
+ROLE_TAG   = "FULLSTACK DEVELOPER · BCA STUDENT"
+BIO_L1     = "I build modern web apps, learn new technologies,"
+BIO_L2     = "and create useful digital experiences."
+WEBSITE    = f"github.com/{USERNAME}"
+EMAIL      = "aryan99dev00@gmail.com"
 
-# ── Avi Vashishta design system ───────────────────────────────────────────────
-# Dark terminal base
-BG       = "#0d1117"      # GitHub dark background
-BG2      = "#161b22"      # card surface (slightly lighter)
-BG3      = "#21262d"      # header bar / subtle surface
-BORDER   = "#30363d"      # border (GitHub dark)
+# ── palette (Manga Ink Noir: Black, Charcoal, Slate, White) ───────────────────
+CARD_BG   = "#ffffff"     # crisp white paper canvas
+CARD_STR  = "#e4e4e7"     # subtle slate border
+TEXT_PRI  = "#09090b"     # rich pitch black
+TEXT_SEC  = "#3f3f46"     # body text charcoal
+TEXT_MUT  = "#71717a"     # metadata / tag grey
+TEXT_SUB  = "#a1a1aa"     # subtle grey
 
-# Text
-TEXT     = "#e6edf3"      # near-white primary
-TEXT_DIM = "#8b949e"      # GitHub muted grey
-TEXT_MUT = "#6e7681"      # very muted
+# Tile colours (monochrome gradient: Black -> Charcoal -> White)
+BLACK_TILE = "#09090b"    # BUILD tile
+DARK_TILE  = "#18181b"    # BRAND tile
+WHITE_TILE = "#ffffff"    # LEARN tile
 
-# Three-world accent system (BUILD / EXPLORE / CONNECT)
-BLUE     = "#3b82f6"      # BUILD — electric blue
-BLUE_D   = "#1d4ed8"      # blue dark variant
-RED      = "#ef4444"      # CONNECT / BRAND — crimson
-RED_D    = "#b91c1c"
-AMBER    = "#f59e0b"      # EXPLORE / LEARN — warm amber
-AMBER_D  = "#b45309"
-
-# Contribution graph ramp  (empty → peak)  in blue
-EMPTY    = "#161b22"
-LEVELS   = [EMPTY, "#0e3463", "#1d4ed8", "#3b82f6", "#93c5fd"]
-
-# Tile accent map
-TILE_ACCENTS = [
-    (BLUE,  BG2),   # BUILD
-    (AMBER, BG2),   # EXPLORE
-    (RED,   BG2),   # CONNECT
-]
+# Contribution graph 5 levels (clean monochrome ink scale)
+GRAPH_EMPTY = "#f4f4f5"   # level 0 (empty paper)
+GRAPH_LVL1  = "#d4d4d8"   # level 1 (pencil sketch grey)
+GRAPH_LVL2  = "#71717a"   # level 2 (medium ink)
+GRAPH_LVL3  = "#27272a"   # level 3 (dark charcoal)
+GRAPH_LVL4  = "#09090b"   # level 4 (pitch black peak)
+GRAPH_LEVELS = [GRAPH_EMPTY, GRAPH_LVL1, GRAPH_LVL2, GRAPH_LVL3, GRAPH_LVL4]
 
 # ── featured repos ────────────────────────────────────────────────────────────
 FEATURED = [
     ("Portfolio",
-     "Personal site built with Next.js and React, with modern UI and animation techniques.",
+     "Personal site built with Next.js and React, featuring modern UI and responsive layouts.",
      "Next.js · React · TypeScript",
      f"https://github.com/{USERNAME}/Portfolio",
-     BLUE),
+     "#09090b"),
     ("Prism",
-     "Modern social platform: auth, profiles, posts, real-time updates, interactive UI.",
-     "React · TypeScript · Vite · Tailwind CSS · Appwrite",
+     "Modern social platform: authentication, profiles, real-time posts, and interactive UI.",
+     "React · TypeScript · Vite · Tailwind · Appwrite",
      f"https://github.com/{USERNAME}/Prism",
-     AMBER),
+     "#18181b"),
     ("Movie-App",
-     "Movie discovery app — search, details, responsive card grid.",
-     "React · Vite",
+     "Movie discovery application with search, detailed view, and responsive media grid.",
+     "React · Vite · Tailwind CSS",
      f"https://github.com/{USERNAME}/Movie-App",
-     RED),
+     "#27272a"),
 ]
 
-# ── tiles  (file, eyebrow, title, detail, href, alt, accent) ─────────────────
+# ── 3 tiles in a row (BUILD, BRAND/EXPLORE, LEARN/CONNECT) ───────────────────
 TILES = [
     ("tile-build.svg",
-     "01 / BUILD", "BUILD", "Portfolio & projects",
+     "BUILD", "3", "projects",
+     "Portfolio, Prism and Movie-App.",
+     "Built with Next.js, React & TypeScript.",
      f"https://github.com/{USERNAME}/Portfolio",
-     "Build — view the portfolio repository",
-     BLUE),
+     "Build — 3 featured projects",
+     BLACK_TILE, "#ffffff", "#ffffff", BLACK_TILE),
     ("tile-explore.svg",
-     "02 / EXPLORE", "EXPLORE", "All repositories",
+     "BRAND", "10+", "repos",
+     "Open source contributions and experiments.",
+     "Active development, animations & UI.",
      f"https://github.com/{USERNAME}?tab=repositories",
-     "Explore — all repositories",
-     AMBER),
+     "Brand — all repositories",
+     DARK_TILE, "#ffffff", "#ffffff", DARK_TILE),
     ("tile-connect.svg",
-     "03 / CONNECT", "CONNECT", "Let's make something",
+     "LEARN", "BCA", "'26",
+     "Shoolini University, India.",
+     "Exploring web architecture & full-stack.",
      f"mailto:{EMAIL}",
-     "Connect — send an email",
-     RED),
+     "Learn — BCA student at Shoolini",
+     WHITE_TILE, "#09090b", "#27272a", "#e4e4e7"),
 ]
 
 # ── fonts ─────────────────────────────────────────────────────────────────────
-# Instrument Serif for editorial headings, JetBrains Mono for terminal metadata
 FONTS = {
-    "Instrument Serif": ("Instrument+Serif", [400]),
-    "JetBrains Mono":   ("JetBrains+Mono:wght@400;500", [400, 500]),
+    "Instrument Serif": ("Instrument+Serif:ital@0;1", [400]),
 }
-UNICODES  = "U+0020-007E,U+00B7,U+00B0,U+2014,U+2019,U+25CF,U+25CB,U+2502,U+2500,U+256D,U+256E,U+2570,U+256F"
-CHROME_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-)
-
-FONT_CSS = ""   # filled by main()
-
-# ── neofetch ASCII info lines ─────────────────────────────────────────────────
-NEOFETCH_LINES = [
-    ("OS",       "Arch Linux (Hackintosh)",),
-    ("Host",     f"github.com/{USERNAME}",),
-    ("Role",     "Full-stack dev · BCA",),
-    ("Stack",    "React · Next.js · TypeScript",),
-    ("Editor",   "VS Code",),
-    ("Location", "India",),
-    ("Email",    EMAIL,),
-]
+UNICODES  = "U+0020-007E,U+00B7,U+00B0,U+2014,U+2019,U+2192,U+2197,U+25A0,U+25CF"
+CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+FONT_CSS  = ""
 
 # ═══════════════════════════════════════════════════════════════════ DATA
 
@@ -252,197 +232,68 @@ def contribution_stats(days: list[tuple[dt.date, int]],
 
 # ═══════════════════════════════════════════════════════════════════ FONTS
 
-def _google_font_files(family: str) -> list[tuple[int, bytes]]:
-    spec, _ = FONTS[family]
-    req = urllib.request.Request(
-        f"https://fonts.googleapis.com/css2?family={spec}&display=swap",
-        headers={"User-Agent": CHROME_UA})
-    css = urllib.request.urlopen(req, timeout=20).read().decode()
-    out = []
-    for subset, block in re.findall(r"/\*\s*([\w-]+)\s*\*/\s*@font-face\s*\{(.*?)\}", css, re.S):
-        if subset != "latin":
-            continue
-        weight = re.search(r"font-weight:\s*(\d+)", block)
-        url    = re.search(r"url\((https://[^)]+)\)", block)
-        if url:
-            data = urllib.request.urlopen(url.group(1), timeout=20).read()
-            out.append((int(weight.group(1)) if weight else 400, data))
-    return out
-
-
-def _local_font_files(family: str) -> list[tuple[int, bytes]]:
-    stem = family.replace(" ", "").lower()
-    fonts_dir = ROOT / "assets" / "fonts"
-    if not fonts_dir.exists():
-        return []
-    out = []
-    for p in sorted(fonts_dir.glob("*")):
-        if p.suffix.lower() in {".ttf", ".otf", ".woff", ".woff2"}:
-            n = p.name.lower().replace("-", "").replace("_", "")
-            if n.startswith(stem.replace(" ", "")):
-                out.append((700 if "bold" in p.name.lower() else 400, p.read_bytes()))
-    return out
-
-
 def subset_font(family: str) -> str:
     try:
-        sources = _google_font_files(family)
-    except Exception as exc:
-        print(f"Google Fonts unavailable for {family} ({exc}); trying assets/fonts/", file=sys.stderr)
-        sources = []
-    sources = sources or _local_font_files(family)
-    if not sources:
-        print(f"::warning::No font source for {family}; falling back to system fonts.", file=sys.stderr)
+        spec, _ = FONTS[family]
+        req = urllib.request.Request(
+            f"https://fonts.googleapis.com/css2?family={spec}&display=swap",
+            headers={"User-Agent": CHROME_UA})
+        css_data = urllib.request.urlopen(req, timeout=10).read().decode()
+        urls = re.findall(r"url\((https://[^)]+)\)", css_data)
+        if not urls:
+            return ""
+        data = urllib.request.urlopen(urls[0], timeout=10).read()
+        b64 = base64.b64encode(data).decode()
+        return (f"@font-face{{font-family:'{family}';font-weight:400;font-style:normal;"
+                f"src:url(data:font/woff2;base64,{b64}) format('woff2');}}")
+    except Exception:
+        return ""
+
+# ═══════════════════════════════════════════════════════════════════ AVATAR HELPER
+
+def get_avatar_b64() -> str:
+    """Load, optimize, and encode avatar image as base64 PNG."""
+    if not AVATAR_PATH.exists():
         return ""
     try:
-        import brotli  # noqa: F401
-        flavor, mime = "woff2", "font/woff2"
-    except ImportError:
-        flavor, mime = "woff", "font/woff"
-    css = ""
-    with tempfile.TemporaryDirectory() as tmp:
-        for i, (weight, data) in enumerate(sources):
-            src = Path(tmp, f"src{i}"); dst = Path(tmp, f"out{i}.{flavor}")
-            src.write_bytes(data)
-            proc = subprocess.run(
-                [sys.executable, "-m", "fontTools.subset", str(src),
-                 f"--unicodes={UNICODES}", f"--output-file={dst}",
-                 f"--flavor={flavor}", "--layout-features=*", "--name-IDs=0,1,2,4,6"],
-                capture_output=True, text=True)
-            if proc.returncode or not dst.exists():
-                print(f"::warning::pyftsubset failed for {family} {weight}: "
-                      f"{proc.stderr.strip()[:300]}", file=sys.stderr)
-                continue
-            b64 = base64.b64encode(dst.read_bytes()).decode()
-            css += (f"@font-face{{font-family:'{family}';font-weight:{weight};"
-                    f"font-style:normal;"
-                    f"src:url(data:{mime};base64,{b64}) format('{flavor}')}}")
-    return css
+        from PIL import Image
+        im = Image.open(AVATAR_PATH)
+        # Resize to clean 450x450 for crisp display at 340x340
+        im_opt = im.resize((450, 450), Image.Resampling.LANCZOS)
+        buf = io.BytesIO()
+        im_opt.save(buf, format="PNG", optimize=True)
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception:
+        return base64.b64encode(AVATAR_PATH.read_bytes()).decode("utf-8")
 
 # ═══════════════════════════════════════════════════════════════════ SVG HELPERS
 
-def _css_keyframes() -> str:
-    if STATIC:
-        return ""
+def _css_styles() -> str:
+    anim = "" if STATIC else (
+        "@keyframes enter{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}"
+        "@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}"
+        ".enter{animation:enter .75s cubic-bezier(.16,1,.3,1) both}"
+        ".bar{transform-box:fill-box;transform-origin:50% 100%;animation:grow .8s cubic-bezier(.16,1,.3,1) both}"
+        "@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important} animate{display:none}}"
+    )
     return (
-        # entrance: fade + rise
-        "@keyframes rise{"
-            "from{opacity:0;transform:translateY(12px)}"
-            "to{opacity:1;transform:translateY(0)}"
-        "}"
-        # typewriter: individual lines appear
-        "@keyframes type{"
-            "from{opacity:0}"
-            "to{opacity:1}"
-        "}"
-        # cursor block blink
-        "@keyframes cur{"
-            "0%,49%{opacity:1}"
-            "50%,100%{opacity:0}"
-        "}"
-        # bar grow from baseline (SMIL preferred; CSS fallback)
-        "@keyframes grow{"
-            "from{transform:scaleY(0)}"
-            "to{transform:scaleY(1)}"
-        "}"
-        # prompt pulse — the coloured dot that blinks
-        "@keyframes dot{"
-            "0%,100%{opacity:.3}"
-            "50%{opacity:1}"
-        "}"
-        # utility classes
-        ".enter{animation:rise .65s cubic-bezier(.2,.75,.25,1) both}"
-        ".tl{animation:type .15s linear both}"
-        ".cursor{animation:cur .9s step-end infinite}"
-        ".bar{transform-box:fill-box;transform-origin:50% 100%;"
-              "animation:grow .8s cubic-bezier(.2,.75,.25,1) both}"
-        ".dot{animation:dot 2.4s ease-in-out infinite}"
-        "@media(prefers-reduced-motion:reduce){"
-            "*{animation:none!important;transition:none!important}"
-            "animate{display:none}"
-        "}"
-    )
-
-
-def _svg_open(w: int, h: int, label: str) -> str:
-    """Return opening SVG tag, defs, style block, and background."""
-    anim = _css_keyframes()
-    defs = (
-        f'<linearGradient id="hdr" x1="0" y1="0" x2="1" y2="0">'
-        f'<stop offset="0" stop-color="{BG3}"/>'
-        f'<stop offset="1" stop-color="{BG2}"/>'
-        f'</linearGradient>'
-        f'<clipPath id="card"><rect width="{w}" height="{h}" rx="12"/></clipPath>'
-    )
-    style = (
         f"<style>"
         f"{FONT_CSS}"
-        f"text{{font-family:'JetBrains Mono','Fira Code','SFMono-Regular',Consolas,monospace}}"
-        f".serif{{font-family:'Instrument Serif',Georgia,serif}}"
-        f".t{{fill:{TEXT}}}.d{{fill:{TEXT_DIM}}}.m{{fill:{TEXT_MUT}}}"
-        f".bl{{fill:{BLUE}}}.am{{fill:{AMBER}}}.rd{{fill:{RED}}}"
+        f".serif{{font-family:'Instrument Serif',Georgia,serif;}}"
+        f".sans{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}}"
+        f".mono{{font-family:ui-monospace,'JetBrains Mono',SFMono-Regular,Menlo,Monaco,Consolas,monospace;}}"
         f"{anim}"
         f"</style>"
     )
+
+
+def _svg_open(w: int, h: int, label: str, bg_color: str = CARD_BG, rx: int = 28, stroke_color: str = CARD_STR) -> str:
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" '
-        f'viewBox="0 0 {w} {h}" role="img" aria-label="{escape(label)}">'
-        f"<defs>{defs}</defs>"
-        f"{style}"
-        f'<g clip-path="url(#card)">'
-        f'<rect width="{w}" height="{h}" fill="{BG}"/>'
-        f'</g>'
-        f'<rect x=".5" y=".5" width="{w-1}" height="{h-1}" rx="12" '
-        f'fill="none" stroke="{BORDER}" stroke-width="1"/>'
-    )
-
-
-def _term_header(w: int, title: str, dot_color: str = BLUE) -> str:
-    """Terminal window title bar with coloured traffic-light dots."""
-    dot_cls = "" if STATIC else ' class="dot"'
-    return (
-        f'<rect x="0" y="0" width="{w}" height="38" fill="{BG3}"/>'
-        f'<rect x="0" y="37" width="{w}" height="1" fill="{BORDER}"/>'
-        # traffic-light dots
-        f'<circle cx="20" cy="19" r="6" fill="{RED}"{dot_cls}/>'
-        f'<circle cx="40" cy="19" r="6" fill="{AMBER}"/>'
-        f'<circle cx="60" cy="19" r="6" fill="{BLUE}"/>'
-        # window title
-        f'<text x="{w//2}" y="24" text-anchor="middle" class="d" font-size="12">'
-        f'{escape(title)}</text>'
-    )
-
-
-def _prompt(x: float, y: float, cmd: str, accent: str = BLUE,
-            delay: float = 0.0) -> str:
-    """Render one terminal prompt line:  user@host ~ $ cmd"""
-    cls = "" if STATIC else f' class="tl" style="animation-delay:{delay:.2f}s"'
-    return (
-        f'<text x="{x}" y="{y}"{cls} font-size="13">'
-        f'<tspan fill="{accent}" font-weight="500">aryan</tspan>'
-        f'<tspan fill="{TEXT_DIM}">@github</tspan>'
-        f'<tspan fill="{TEXT_DIM}"> ~ </tspan>'
-        f'<tspan fill="{TEXT_MUT}">$ </tspan>'
-        f'<tspan fill="{TEXT}">{escape(cmd)}</tspan>'
-        f'</text>'
-    )
-
-
-def _output_line(x: float, y: float, text: str, color: str = TEXT_DIM,
-                 delay: float = 0.0, font_size: int = 12) -> str:
-    cls = "" if STATIC else f' class="tl" style="animation-delay:{delay:.2f}s"'
-    return (
-        f'<text x="{x}" y="{y}"{cls} font-size="{font_size}" fill="{color}">'
-        f'{escape(text)}</text>'
-    )
-
-
-def _cursor(x: float, y: float, delay: float = 0.0) -> str:
-    if STATIC:
-        return ""
-    return (
-        f'<rect x="{x}" y="{y-13}" width="8" height="15" fill="{TEXT_DIM}" opacity=".7"'
-        f' class="cursor" style="animation-delay:{delay:.2f}s"/>'
+        f'viewBox="0 0 {w} {h}" role="img" aria-label="{escape(label)}">\n'
+        f'{_css_styles()}\n'
+        f'<rect width="{w}" height="{h}" rx="{rx}" fill="{bg_color}" '
+        f'stroke="{stroke_color}" stroke-width="1"/>\n'
     )
 
 
@@ -462,270 +313,272 @@ def _slug(name: str) -> str:
 
 # ═══════════════════════════════════════════════════════════════════ CARDS
 
-# ── 1. Hero — terminal window with Instrument Serif name + neofetch panel ─────
+# ── 1. Hero Card (Manga Ink Noir Aesthetic) ──────────────────────────────────
 
 def hero_card() -> None:
     """
-    900 × 300  terminal window
-    ──────────────────────────
-    [header bar: traffic-light dots + "aryan@github: ~"]
-    left column (px 20–460):  Instrument Serif name, typewriter prompt + intro
-    right column (px 480–880): neofetch-style info panel
-    optional: portrait (embedded) overlaid in right column
+    920 × 380  Paper Card
+    ─────────────────────
+    Top Tag:    ■ FULLSTACK DEVELOPER · BCA STUDENT
+    Name:       Aryan (Roman)
+                Sharma (Italic) — 78px Instrument Serif
+    Bio:        I build modern web apps, learn new technologies,
+                and create useful digital experiences.
+    Link:       github.com/aryan99dev ↗
+    Right side: Embedded anime ink portrait (seamless white-on-white)
     """
-    W, H = 900, 300
-    s = _svg_open(W, H, f"{NAME} — {ROLE}")
-    s += _term_header(W, f"{USERNAME}@github: ~", BLUE)
+    W, H = 920, 380
+    avatar_b64 = get_avatar_b64()
 
-    # left column ─────────────────────────────────────────────────────────────
+    s = _svg_open(W, H, f"{FIRST_NAME} {LAST_NAME} — {ROLE_TAG}", bg_color=CARD_BG, rx=28)
     s += _enter(0.0)
 
-    # Serif name (editorial)
+    # 1. Top tag: black square + all-caps tracking
     s += (
-        f'<text x="28" y="92" class="serif t" font-size="46" font-weight="400">'
-        f'{escape(NAME)}</text>'
-    )
-    # thin rule under name
-    s += (
-        f'<rect x="28" y="100" width="300" height="1.5" fill="{BLUE}" opacity=".6"/>'
+        f'<rect x="48" y="44" width="9" height="9" rx="2" fill="{TEXT_PRI}"/>\n'
+        f'<text x="68" y="52" class="mono" font-size="11" font-weight="600" '
+        f'letter-spacing="2.5" fill="{TEXT_MUT}">{escape(ROLE_TAG)}</text>\n'
     )
 
-    # typewriter role line
-    role_delay = 0.15
-    s += _prompt(28, 136, "./whoami.sh", BLUE, role_delay)
-
-    # output lines (typewriter stagger)
-    out_lines = [
-        (ROLE, AMBER),
-        (INTRO[:58] + ("…" if len(INTRO) > 58 else ""), TEXT_DIM),
-        (META, TEXT_MUT),
-    ]
-    for i, (line, col) in enumerate(out_lines):
-        s += _output_line(28, 158 + i * 22, line, col, role_delay + 0.25 + i * 0.18)
-
-    # second prompt (ready cursor)
-    prompt2_y = 236
-    s += _prompt(28, prompt2_y, "", BLUE, role_delay + 0.9)
-    s += _cursor(100, prompt2_y, role_delay + 0.9)
-
-    # SMIL blinking accent dot (top-right status indicator)
+    # 2. Huge editorial serif name (stacked)
     s += (
-        f'<circle cx="872" cy="20" r="4" fill="{BLUE}" opacity=".8">'
-        + ("" if STATIC else
-           '<animate attributeName="opacity" values=".2;1;.2" dur="2.4s" '
-           'repeatCount="indefinite"/>')
-        + "</circle>"
+        f'<text x="46" y="146" class="serif" font-size="78" fill="{TEXT_PRI}">{escape(FIRST_NAME)}</text>\n'
+        f'<text x="46" y="218" class="serif" font-size="78" font-style="italic" fill="{TEXT_PRI}">{escape(LAST_NAME)}</text>\n'
     )
 
-    s += "</g>"
+    # 3. Bio text in clean sans-serif
+    s += (
+        f'<text x="48" y="272" class="sans" font-size="15.5" fill="{TEXT_SEC}">{escape(BIO_L1)}</text>\n'
+        f'<text x="48" y="296" class="sans" font-size="15.5" fill="{TEXT_SEC}">{escape(BIO_L2)}</text>\n'
+    )
 
-    # right column — neofetch panel ──────────────────────────────────────────
-    rx, ry0 = 490, 55
+    # 4. Link at bottom
     s += (
-        f'<rect x="{rx}" y="{ry0}" width="385" height="{H - ry0 - 16}" '
-        f'rx="8" fill="{BG2}" stroke="{BORDER}" stroke-width="1"/>'
+        f'<text x="48" y="340" class="mono" font-size="13.5" fill="{TEXT_PRI}">{escape(WEBSITE)}</text>\n'
+        f'<text x="238" y="340" class="sans" font-size="14" font-weight="bold" fill="{TEXT_PRI}">&#x2197;</text>\n'
     )
-    # neofetch header
-    s += _enter(0.3)
-    s += (
-        f'<text x="{rx+16}" y="{ry0+24}" font-size="12" fill="{BLUE}" font-weight="500">'
-        f'{USERNAME}@github</text>'
-        f'<rect x="{rx+16}" y="{ry0+30}" width="120" height="1" fill="{BORDER}"/>'
-    )
-    # neofetch fields
-    for j, (key, val) in enumerate(NEOFETCH_LINES):
-        fy = ry0 + 52 + j * 26
-        d  = 0.35 + j * 0.12
-        cls = "" if STATIC else f' class="tl" style="animation-delay:{d:.2f}s"'
+
+    s += "</g>\n"
+
+    # 5. Right side: Embedded high-resolution anime portrait
+    # Placed seamlessly on the white paper card with gentle clip to match card's rx
+    if avatar_b64:
+        img_w, img_h = 330, 330
+        img_x = W - img_w - 35
+        img_y = (H - img_h) // 2
+
+        s += _enter(0.2)
         s += (
-            f'<text x="{rx+16}" y="{fy}"{cls} font-size="12">'
-            f'<tspan fill="{BLUE}" font-weight="500">{escape(key):<10}</tspan>'
-            f'<tspan fill="{TEXT_DIM}"> {escape(val)}</tspan>'
-            f'</text>'
-        )
-    # colour palette swatches at the bottom of neofetch panel
-    swatch_y = ry0 + H - ry0 - 24
-    for k, col in enumerate([RED, AMBER, BLUE, "#a855f7", TEXT_MUT, TEXT_DIM]):
-        s += f'<rect x="{rx+16+k*22}" y="{swatch_y}" width="14" height="10" rx="2" fill="{col}"/>'
-    s += "</g>"
-
-    # optional portrait (top-right corner of neofetch panel) ─────────────────
-    portrait = next((p for p in PORTRAIT_CANDIDATES if p.exists()), None)
-    if portrait:
-        mime = "image/png" if portrait.suffix.lower() == ".png" else "image/jpeg"
-        data = base64.b64encode(portrait.read_bytes()).decode()
-        # small circular portrait top-right
-        s += (
-            f'<defs><clipPath id="pc"><circle cx="854" cy="80" r="30"/></clipPath></defs>'
-            f'<image href="data:{mime};base64,{data}" '
-            f'x="824" y="50" width="60" height="60" '
-            f'preserveAspectRatio="xMidYMid slice" clip-path="url(#pc)"/>'
-            f'<circle cx="854" cy="80" r="31" fill="none" stroke="{BLUE}" stroke-width="1.5"/>'
+            f'<defs><clipPath id="hero-img-clip">'
+            f'<rect x="{img_x}" y="{img_y}" width="{img_w}" height="{img_h}" rx="24"/>'
+            f'</clipPath></defs>\n'
+            f'<image href="data:image/png;base64,{avatar_b64}" '
+            f'x="{img_x}" y="{img_y}" width="{img_w}" height="{img_h}" '
+            f'preserveAspectRatio="xMidYMid meet" clip-path="url(#hero-img-clip)"/>\n'
+            f'</g>\n'
         )
 
     _save("hero.svg", s)
 
 
-# ── 2. Tiles ─────────────────────────────────────────────────────────────────
+# ── 2. Three Tiles (Monochrome Noir Gradient) ────────────────────────────────
 
 def tile_card(i: int, tile: tuple) -> None:
     """
-    300 × 140 terminal mini-card per tile.
-    Header bar + accent-coloured eyebrow + big title + prompt detail line.
+    300 × 330  Solid Monochrome Tile
+    ─────────────────────────────────
+    Tile 1: Jet Black (#09090b) -> BUILD (3 projects)
+    Tile 2: Deep Charcoal (#18181b) -> BRAND (10+ repos)
+    Tile 3: Stark White (#ffffff) -> LEARN (BCA '26)
     """
-    file, eyebrow, title, detail, _href, _alt, accent = tile
-    W, H = 300, 140
-    s  = _svg_open(W, H, title)
-    s += _term_header(W, eyebrow, accent)
-    s += _enter(0.35 + i * 0.14)
+    file, label, val_num, val_word, desc1, desc2, _href, _alt, bg_col, text_col, sub_col, stroke_col = tile
+    W, H = 300, 330
 
-    # big title (Instrument Serif)
+    s = _svg_open(W, H, f"{label} tile", bg_color=bg_col, rx=26, stroke_color=stroke_col)
+    s += _enter(0.25 + i * 0.12)
+
+    # Top row: all-caps label + arrow
     s += (
-        f'<text x="20" y="90" class="serif t" font-size="32" font-weight="400">'
-        f'{escape(title)}</text>'
-        f'<rect x="20" y="98" width="40" height="1.5" fill="{accent}" opacity=".8"/>'
-        f'<text x="20" y="122" class="d" font-size="12">{escape(detail)}</text>'
+        f'<text x="28" y="44" class="mono" font-size="12" font-weight="600" '
+        f'letter-spacing="2" fill="{text_col}" opacity="0.95">{escape(label)}</text>\n'
+        f'<text x="{W-28}" y="44" class="sans" font-size="18" font-weight="bold" '
+        f'text-anchor="end" fill="{text_col}">&#x2192;</text>\n'
     )
-    # ↗ corner arrow
-    ax, ay = W - 28, 20
+
+    # Big Instrument Serif Metric
     s += (
-        f'<text x="{ax}" y="{ay}" font-size="16" fill="{accent}" '
-        f'text-anchor="middle">↗</text>'
+        f'<text x="26" y="156" class="serif" font-size="48" fill="{text_col}">'
+        f'{escape(val_num)} <tspan font-style="italic">{escape(val_word)}</tspan>'
+        f'</text>\n'
     )
-    s += "</g>"
+
+    # Description lines
+    s += (
+        f'<text x="28" y="214" class="sans" font-size="14" fill="{sub_col}" opacity="0.95">'
+        f'{escape(desc1)}</text>\n'
+        f'<text x="28" y="238" class="sans" font-size="14" fill="{sub_col}" opacity="0.95">'
+        f'{escape(desc2)}</text>\n'
+    )
+
+    s += "</g>\n"
     _save(file, s)
 
 
-# ── 3. Contributions chart ────────────────────────────────────────────────────
+# ── 3. Contributions Activity Card ───────────────────────────────────────────
 
 def contribution_card(st: dict) -> None:
     """
-    900 × 310  terminal window with:
-      header bar   "aryan@github: ~/contributions"
-      3 stat blocks (streak / active_days / busiest)
-      12-month bar chart with SMIL grow animation
-      footer note
+    920 × 320  Paper Card
+    ─────────────────────
+    Top Tag:    ■ CONTRIBUTION PULSE
+    Title:      Activity Dashboard (Instrument Serif 38px)
+    Subtitle:   Real GitHub activity across the last 12 calendar months
+    Pills:      Day Streak, Active Days, Busiest Day in slate noir tones
+    Bars:       Solid pitch black (#09090b) with rounded top corners
     """
-    W, H = 900, 310
-    s = _svg_open(W, H, "Contribution analytics — last 12 months")
-    s += _term_header(W, f"{USERNAME}@github: ~/contributions", BLUE)
-    s += _enter(0.75)
+    W, H = 920, 320
+    s = _svg_open(W, H, "Contribution analytics", bg_color=CARD_BG, rx=28)
+    s += _enter(0.65)
 
-    # prompt line
-    s += _prompt(28, 70, "./contributions.sh", BLUE, 0.0)
+    # 1. Top tag
+    s += (
+        f'<rect x="48" y="38" width="8" height="8" rx="2" fill="{TEXT_PRI}"/>\n'
+        f'<text x="66" y="46" class="mono" font-size="11" font-weight="600" '
+        f'letter-spacing="2" fill="{TEXT_MUT}">CONTRIBUTION PULSE</text>\n'
+    )
 
-    # stat blocks
+    # 2. Title
+    s += (
+        f'<text x="46" y="86" class="serif" font-size="36" fill="{TEXT_PRI}">'
+        f'Activity <tspan font-style="italic">Dashboard</tspan></text>\n'
+        f'<text x="48" y="108" class="sans" font-size="13" fill="{TEXT_SEC}">'
+        f'Real GitHub activity across the last 12 calendar months</text>\n'
+    )
+
+    # 3. Stat pills on top-right in monochrome noir style
     badges = [
-        (str(st["streak"]),      "DAY STREAK",      BLUE),
-        (str(st["active_days"]), "ACTIVE DAYS",      AMBER),
-        (st["busiest"],          "BUSIEST WEEKDAY",  RED),
+        (str(st["streak"]),      "DAY STREAK",      "#f4f4f5", "#09090b"),
+        (str(st["active_days"]), "ACTIVE DAYS",      "#09090b", "#ffffff"),
+        (st["busiest"],          "BUSIEST",          "#f4f4f5", "#09090b"),
     ]
-    for j, (val, lab, acc) in enumerate(badges):
-        bx = 490 + j * 134
+    for j, (val, lab, pill_bg, pill_fg) in enumerate(badges):
+        bx = 520 + j * 126
         s += (
-            f'<rect x="{bx}" y="50" width="128" height="52" rx="8" '
-            f'fill="{BG2}" stroke="{acc}" stroke-width="1" opacity=".9"/>'
-            f'<text x="{bx+12}" y="76" font-size="20" fill="{acc}" font-weight="500">'
-            f'{escape(val)}</text>'
-            f'<text x="{bx+12}" y="94" font-size="9" fill="{TEXT_MUT}">'
-            f'{lab}</text>'
+            f'<rect x="{bx}" y="44" width="118" height="52" rx="14" fill="{pill_bg}"/>\n'
+            f'<text x="{bx+16}" y="67" class="sans" font-size="18" font-weight="bold" fill="{pill_fg}">'
+            f'{escape(val)}</text>\n'
+            f'<text x="{bx+16}" y="84" class="mono" font-size="9" font-weight="600" letter-spacing="1" fill="{pill_fg}">'
+            f'{lab}</text>\n'
         )
 
-    # bar chart
-    cx, cy, cw, ch, gap = 28, 112, 840, 140, 10
+    # 4. Bar chart
+    cx, cy, cw, ch, gap = 48, 142, 824, 126, 12
     months = st["months"]
     bw     = (cw - gap * (len(months) - 1)) / len(months)
 
-    # grid lines (subtle)
-    for pct in [0.25, 0.5, 0.75, 1.0]:
-        gy = cy + ch - ch * pct
-        s += (
-            f'<line x1="{cx}" y1="{gy:.1f}" x2="{cx+cw}" y2="{gy:.1f}" '
-            f'stroke="{BORDER}" stroke-width=".5" stroke-dasharray="3,3"/>'
-        )
+    # baseline
+    s += f'<line x1="{cx}" y1="{cy+ch}" x2="{cx+cw}" y2="{cy+ch}" stroke="{CARD_STR}" stroke-width="1"/>\n'
 
     for k, (m, v) in enumerate(months):
-        bar_h = max(3.0, ch * v / st["max_month"]) if v else 3.0
+        bar_h = max(4.0, ch * v / st["max_month"]) if v else 4.0
         bx    = cx + k * (bw + gap)
         by    = cy + ch - bar_h
-        fill  = BLUE if v else EMPTY
+        fill  = TEXT_PRI if v else GRAPH_EMPTY
 
-        # static base rect (always visible)
-        s += (
-            f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bw:.1f}" height="{bar_h:.1f}" '
-            f'rx="4" fill="{fill}" opacity=".85"/>'
-        )
+        # Static bar
+        s += f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bw:.1f}" height="{bar_h:.1f}" rx="6" fill="{fill}"/>\n'
 
-        if not STATIC:
-            begin = f"{1.0 + k * 0.07:.2f}s"
+        if not STATIC and v:
+            begin = f"{0.85 + k * 0.05:.2f}s"
             s += (
-                f'<rect x="{bx:.1f}" y="{cy+ch}" width="{bw:.1f}" height="0" '
-                f'rx="4" fill="{fill}" opacity=".85">'
-                f'<animate attributeName="height" from="0" to="{bar_h:.1f}" '
-                f'dur=".7s" begin="{begin}" fill="freeze"/>'
-                f'<animate attributeName="y" from="{cy+ch}" to="{by:.1f}" '
-                f'dur=".7s" begin="{begin}" fill="freeze"/>'
-                f'</rect>'
+                f'<rect x="{bx:.1f}" y="{cy+ch}" width="{bw:.1f}" height="0" rx="6" fill="{fill}">\n'
+                f'<animate attributeName="height" from="0" to="{bar_h:.1f}" dur=".65s" begin="{begin}" fill="freeze"/>\n'
+                f'<animate attributeName="y" from="{cy+ch}" to="{by:.1f}" dur=".65s" begin="{begin}" fill="freeze"/>\n'
+                f'</rect>\n'
             )
 
+        # Count above bar
         if v:
             s += (
-                f'<text x="{bx+bw/2:.1f}" y="{by-5:.1f}" text-anchor="middle" '
-                f'font-size="9" fill="{TEXT_DIM}">{v}</text>'
+                f'<text x="{bx+bw/2:.1f}" y="{by-6:.1f}" text-anchor="middle" '
+                f'class="sans" font-size="11" font-weight="600" fill="{TEXT_PRI}">{v}</text>\n'
             )
+        # Month label below
         s += (
-            f'<text x="{bx+bw/2:.1f}" y="{cy+ch+16}" text-anchor="middle" '
-            f'font-size="10" fill="{TEXT_MUT}">{m}</text>'
+            f'<text x="{bx+bw/2:.1f}" y="{cy+ch+18}" text-anchor="middle" '
+            f'class="mono" font-size="11" fill="{TEXT_MUT}">{m}</text>\n'
         )
 
-    # footer
+    # Summary note
     note = (
-        f'{st["total"]} contributions  ·  {st["range"]}'
-        if st["total"] else
-        "No contribution data yet — the next scheduled refresh will fill this in."
+        f'{st["total"]} contributions in the last 12 months  ·  {st["range"]}'
+        if st["total"] else "No contribution data yet."
     )
-    s += (
-        f'<text x="28" y="{H-12}" font-size="11" fill="{TEXT_MUT}">'
-        f'{escape(note)}</text>'
-        f'</g>'
-    )
+    s += f'<text x="48" y="{H-16}" class="mono" font-size="11" fill="{TEXT_MUT}">{escape(note)}</text>\n'
+    s += "</g>\n"
     _save("contributions.svg", s)
 
 
-# ── 4. Repo cards ─────────────────────────────────────────────────────────────
+# ── 4. Featured Repo Cards ───────────────────────────────────────────────────
 
 def repo_card(i: int, repo: tuple) -> None:
     """
-    900 × 160  terminal card per featured repo.
-    Header bar  "FEATURED REPOSITORY / 0N"
-    Serif repo name + horizontal rule + description + stack line
+    920 × 165  Paper Card
+    ─────────────────────
+    Tag:         ■ FEATURED REPOSITORY / 01
+    Title:       Portfolio (Instrument Serif 38px)
+    Description: Personal site built with Next.js...
+    Stack pill:  Next.js · React · TypeScript
+    Arrow:       → top-right
     """
     name, desc, stack, _url, accent = repo
-    W, H = 900, 160
-    s  = _svg_open(W, H, f"{name} — featured repository")
-    s += _term_header(W, f"FEATURED REPOSITORY / 0{i}", accent)
-    s += _enter(1.5 + i * 0.22)
+    W, H = 920, 165
 
+    s = _svg_open(W, H, f"{name} — featured repository", bg_color=CARD_BG, rx=24)
+    s += _enter(1.3 + i * 0.18)
+
+    # Tag
     s += (
-        f'<text x="28" y="85" class="serif t" font-size="32" font-weight="400">'
-        f'{escape(name)}</text>'
-        f'<rect x="28" y="93" width="60" height="1.5" fill="{accent}" opacity=".8"/>'
-        f'<text x="28" y="116" font-size="13" fill="{TEXT_DIM}">{escape(desc)}</text>'
-        f'<text x="28" y="140" font-size="11" fill="{accent}">{escape(stack)}</text>'
+        f'<rect x="44" y="32" width="7" height="7" rx="1.5" fill="{accent}"/>\n'
+        f'<text x="60" y="39" class="mono" font-size="10.5" font-weight="600" '
+        f'letter-spacing="2" fill="{TEXT_MUT}">FEATURED REPOSITORY / 0{i}</text>\n'
     )
-    # ↗ arrow
+
+    # Title in Instrument Serif
     s += (
-        f'<text x="862" y="88" font-size="20" fill="{accent}" text-anchor="middle">↗</text>'
+        f'<text x="42" y="80" class="serif" font-size="38" fill="{TEXT_PRI}">'
+        f'{escape(name)}</text>\n'
     )
-    s += "</g>"
+
+    # Description in sans-serif
+    s += (
+        f'<text x="44" y="108" class="sans" font-size="14" fill="{TEXT_SEC}">'
+        f'{escape(desc)}</text>\n'
+    )
+
+    # Stack line
+    s += (
+        f'<text x="44" y="136" class="mono" font-size="11.5" font-weight="500" fill="{TEXT_PRI}">'
+        f'{escape(stack)}</text>\n'
+    )
+
+    # Top right arrow
+    s += f'<text x="{W-44}" y="60" class="sans" font-size="22" font-weight="bold" fill="{TEXT_PRI}">&#x2192;</text>\n'
+
+    s += "</g>\n"
     _save(f"repo-{i}-{_slug(name)}.svg", s)
 
 
-# ── 5. Contribution graph ─────────────────────────────────────────────────────
+# ── 5. Contribution Graph (Heatmap) ──────────────────────────────────────────
 
 def graph_card(days: list[tuple[dt.date, int]]) -> None:
     """
-    900 × 240  terminal heat-map — 52-week GitHub-style grid in LEVELS palette.
+    920 × 240  Paper Card
+    ─────────────────────
+    Tag:      ■ CONSISTENCY MAP
+    Title:    Activity Graph (Instrument Serif 32px)
+    Subtitle: Daily contribution activity, last 52 weeks
+    Grid:     52 columns of 7 clean rounded squares in monochrome ink scale
     """
     today  = dt.datetime.now(dt.timezone.utc).date()
     counts = dict(days)
@@ -734,75 +587,80 @@ def graph_card(days: list[tuple[dt.date, int]]) -> None:
     total  = 53 * 7
     mx     = max([counts.get(start + dt.timedelta(days=k), 0) for k in range(total)] + [1])
 
-    W, H = 900, 240
-    s  = _svg_open(W, H, "GitHub contribution graph — last 52 weeks")
-    s += _term_header(W, f"{USERNAME}@github: ~/graph", BLUE)
-    s += _enter(2.3)
+    W, H = 920, 240
+    s = _svg_open(W, H, "Contribution graph", bg_color=CARD_BG, rx=28)
+    s += _enter(1.8)
 
-    # subtitle
+    # Tag & Title
     s += (
-        f'<text x="28" y="68" font-size="13" fill="{TEXT_DIM}">'
-        f'$ git log --since=52wk --format="%ad" --date=short | uniq | wc -l</text>'
+        f'<rect x="44" y="32" width="7" height="7" rx="1.5" fill="{TEXT_PRI}"/>\n'
+        f'<text x="60" y="39" class="mono" font-size="10.5" font-weight="600" '
+        f'letter-spacing="2" fill="{TEXT_MUT}">CONSISTENCY MAP</text>\n'
+        f'<text x="42" y="74" class="serif" font-size="32" fill="{TEXT_PRI}">'
+        f'Activity <tspan font-style="italic">Graph</tspan></text>\n'
+        f'<text x="44" y="94" class="sans" font-size="12.5" fill="{TEXT_SEC}">'
+        f'Daily contribution activity — last 52 weeks</text>\n'
     )
 
-    pitch, x0, y0 = 15, 28, 90
+    pitch, x0, y0 = 15.2, 44, 116
     last_month = None
-    cells: list[tuple] = []
 
     for k in range(total):
         d   = start + dt.timedelta(days=k)
         col, row = divmod(k, 7)
+
+        # Month header
         if row == 0 and d.month != last_month and d <= today:
             last_month = d.month
             s += (
-                f'<text x="{x0+col*pitch}" y="82" font-size="9" fill="{TEXT_MUT}">'
-                f'{calendar.month_abbr[d.month].upper()}</text>'
+                f'<text x="{x0+col*pitch:.1f}" y="{y0-10}" class="mono" font-size="9" fill="{TEXT_MUT}">'
+                f'{calendar.month_abbr[d.month].upper()}</text>\n'
             )
+
         if d > today:
             continue
+
         c   = counts.get(d, 0)
         lvl = 0 if c == 0 else min(4, 1 + int(3.999 * c / mx))
-        cells.append((x0 + col*pitch, y0 + row*pitch, LEVELS[lvl], d, c, col))
+        col_color = GRAPH_LEVELS[lvl]
+        cx2 = x0 + col * pitch
+        cy2 = y0 + row * pitch
 
-    for cx2, cy2, color, d, c, col_idx in cells:
         s += (
-            f'<rect x="{cx2}" y="{cy2}" width="12" height="12" rx="2" fill="{color}">'
+            f'<rect x="{cx2:.1f}" y="{cy2:.1f}" width="12" height="12" rx="3" fill="{col_color}">'
             f'<title>{d.isoformat()}: {c} contribution{"s" if c!=1 else ""}</title>'
         )
         if not STATIC and c > 0:
-            begin = f"{2.4 + col_idx * 0.014:.3f}s"
-            s += (
-                f'<animate attributeName="opacity" values="0;1" '
-                f'dur=".3s" begin="{begin}" fill="freeze"/>'
-            )
-        s += "</rect>"
+            begin = f"{1.9 + col * 0.012:.3f}s"
+            s += f'<animate attributeName="opacity" values="0;1" dur=".25s" begin="{begin}" fill="freeze"/>'
+        s += "</rect>\n"
 
-    # legend
-    s += f'<text x="{x0}" y="216" font-size="9" fill="{TEXT_MUT}" letter-spacing="1">LESS</text>'
-    for k, col in enumerate(LEVELS):
-        s += f'<rect x="{x0+42+k*18}" y="206" width="12" height="12" rx="2" fill="{col}"/>'
-    s += (
-        f'<text x="{x0+42+len(LEVELS)*18+6}" y="216" font-size="9" '
-        f'fill="{TEXT_MUT}" letter-spacing="1">MORE</text>'
-        f'</g>'
-    )
+    # Legend at bottom right
+    leg_x = W - 180
+    leg_y = H - 24
+    s += f'<text x="{leg_x-36}" y="{leg_y+9}" class="mono" font-size="9" fill="{TEXT_MUT}">LESS</text>\n'
+    for k, col in enumerate(GRAPH_LEVELS):
+        s += f'<rect x="{leg_x + k * 16}" y="{leg_y}" width="11" height="11" rx="2.5" fill="{col}"/>\n'
+    s += f'<text x="{leg_x + len(GRAPH_LEVELS) * 16 + 8}" y="{leg_y+9}" class="mono" font-size="9" fill="{TEXT_MUT}">MORE</text>\n'
+
+    s += "</g>\n"
     _save("contribution-graph.svg", s)
 
 # ═══════════════════════════════════════════════════════════════════ README
 
 def _readme() -> str:
     tiles = "\n".join(
-        f'<a href="{t[4]}"><img src="cards/{t[0]}" width="32.5%" alt="{escape(t[5])}" /></a>'
+        f'<a href="{t[6]}"><img src="cards/{t[0]}" width="32.5%" alt="{escape(t[7])}" /></a>'
         for t in TILES
     )
     repos = "\n".join(
         f'<a href="{r[3]}"><img src="cards/repo-{i}-{_slug(r[0])}.svg" '
-        f'width="100%" alt="{escape(r[0])} — {escape(r[2])}" /></a>'
+        f'width="100%" alt="{escape(r[0])} - {escape(r[2])}" /></a>'
         for i, r in enumerate(FEATURED, 1)
     )
     return (
         f'<div align="center">\n\n'
-        f'<img src="cards/hero.svg" width="100%" alt="{escape(NAME)}, {escape(ROLE)}" />\n\n'
+        f'<img src="cards/hero.svg" width="100%" alt="{escape(FIRST_NAME)} {escape(LAST_NAME)} - {escape(ROLE_TAG)}" />\n\n'
         f'{tiles}\n\n'
         f'<img src="cards/contributions.svg" width="100%" '
         f'alt="Monthly contributions, streak, active days and busiest weekday" />\n\n'
@@ -811,7 +669,7 @@ def _readme() -> str:
         f'{repos}\n\n'
         f'<div align="center">\n\n'
         f'<img src="cards/contribution-graph.svg" width="100%" '
-        f'alt="Contribution graph — last 52 weeks" />\n\n'
+        f'alt="Contribution graph - last 52 weeks" />\n\n'
         f'[GitHub](https://github.com/{USERNAME})'
         f' · [Portfolio](https://github.com/{USERNAME}/Portfolio)'
         f' · [Email](mailto:{EMAIL})\n\n'
@@ -831,10 +689,10 @@ def _preview_html() -> str:
     return (
         '<!doctype html><meta charset="utf-8"><title>Static card preview</title>'
         '<style>'
-        f'body{{background:{BG};margin:0;padding:24px}}'
-        '.w{max-width:900px;margin:auto;display:flex;flex-wrap:wrap;gap:10px}'
+        'body{background:#09090b;margin:0;padding:24px}'
+        '.w{max-width:920px;margin:auto;display:flex;flex-wrap:wrap;gap:14px}'
         'img{width:100%}'
-        'img[src*="tile-"]{width:calc(33.33% - 7px)}'
+        'img[src*="tile-"]{width:calc(33.333% - 10px)}'
         '</style>'
         f'<div class="w">{imgs}</div>'
     )
@@ -854,7 +712,7 @@ def main() -> None:
         refresh_contributions()
 
     if not args.skip_fonts:
-        print("Subsetting fonts (Instrument Serif + JetBrains Mono)…")
+        print("Subsetting fonts (Instrument Serif)…")
         FONT_CSS = "".join(subset_font(f) for f in FONTS)
     else:
         print("--skip-fonts: using system font fallbacks.")
