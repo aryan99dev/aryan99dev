@@ -3,7 +3,7 @@
 <img src="cards/hero.svg" width="100%" alt="Aryan Sharma — full-stack developer" />
 
 <a href="https://github.com/aryan99dev/Portfolio"><img src="cards/tile-build.svg" width="32.5%" alt="Explore portfolio" /></a>
-<a href="https://github.com/aryan99dev?tab=repositories"><img src="cards/tile-explore.svg" width="32.5%" alt="Explore projects" /></a>
+<a href="https://github.com/aryan99dev/Prism"><img src="cards/tile-explore.svg" width="32.5%" alt="Explore projects" /></a>
 <a href="mailto:aryan99dev00@gmail.com"><img src="cards/tile-connect.svg" width="32.5%" alt="Contact Aryan" /></a>
 
 <img src="cards/contributions.svg" width="100%" alt="Monthly GitHub contributions, streak, active days and busiest day" />
@@ -19,7 +19,7 @@
 <div align="center">
 <img src="cards/contribution-graph.svg" width="100%" alt="GitHub contribution graph in Aryan's brand colour" />
 
-[GitHub](https://github.com/aryan99dev) · [Portfolio](https://github.com/aryan99dev/Portfolio) · [Business email](mailto:aryan99dev00@gmail.com)
+[GitHub](https://github.com/aryan99dev) · [Portfolio repository](https://github.com/aryan99dev/Portfolio) · [Business email](mailto:aryan99dev00@gmail.com)
 
 </div>
 
