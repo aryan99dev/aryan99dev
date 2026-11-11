@@ -1,48 +1,62 @@
 name: Refresh animated profile cards
 
+# ── triggers ──────────────────────────────────────────────────────────────────
 on:
   schedule:
+    # 02:17 UTC every day — staggered to avoid the top-of-hour spike
     - cron: "17 2 * * *"
-  workflow_dispatch:
+  workflow_dispatch:        # lets you trigger a manual run from the Actions tab
 
+# ── safety ───────────────────────────────────────────────────────────────────
 permissions:
-  contents: write
+  contents: write           # needed to push the updated cards + README
 
 concurrency:
   group: refresh-profile-cards
-  cancel-in-progress: false
+  cancel-in-progress: false # never cancel a commit-in-progress run
 
+# ── job ──────────────────────────────────────────────────────────────────────
 jobs:
   render:
     runs-on: ubuntu-latest
     steps:
+      # ── 1. checkout ──────────────────────────────────────────────────────────
       - name: Check out profile repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      # ── 2. python ────────────────────────────────────────────────────────────
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install font subsetting tools
+      # ── 3. dependencies ──────────────────────────────────────────────────────
+      - name: Install font-subsetting tools
         run: python -m pip install --upgrade fonttools brotli
 
-      - name: Fetch contribution calendar and render SVG cards
+      # ── 4. fetch contribution data + render cards ─────────────────────────
+      #      GH_TOKEN is the auto-provided Actions token; no extra secret needed.
+      - name: Fetch contributions and render SVG cards
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python scripts/render_cards.py --refresh-contributions
 
-      - name: Verify fonts were embedded
-        run: grep -q "@font-face" cards/hero.svg || echo "::warning::No embedded fonts found in cards/hero.svg (Google Fonts fetch or pyftsubset failed)"
+      # ── 5. sanity-check: fonts must be embedded ───────────────────────────
+      - name: Verify font embedding
+        run: |
+          grep -q "@font-face" cards/hero.svg \
+            && echo "✓ Fonts embedded in hero.svg" \
+            || echo "::warning::No @font-face found in cards/hero.svg — Google Fonts or pyftsubset failed; cards fall back to system fonts"
 
+      # ── 6. commit refreshed artefacts (only when something changed) ───────
       - name: Commit refreshed cards
         run: |
-          git config user.name "github-actions[bot]"
+          git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add README.md cards/ contribution-data.json
           if ! git diff --cached --quiet; then
-            git commit -m "chore: refresh animated profile cards"
+            git commit -m "chore: refresh animated profile cards [skip ci]"
             git push
           else
-            echo "No card changes to commit."
+            echo "Cards are unchanged — nothing to commit."
           fi

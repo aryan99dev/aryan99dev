@@ -1,23 +1,24 @@
 <div align="center">
 
-<img src="cards/hero.svg" width="100%" alt="Aryan Sharma — full-stack developer" />
+<img src="cards/hero.svg" width="100%" alt="Aryan Sharma, Full-stack developer  ·  BCA student" />
 
-<a href="https://github.com/aryan99dev/Portfolio"><img src="cards/tile-build.svg" width="32.5%" alt="Explore portfolio" /></a>
-<a href="https://github.com/aryan99dev/Prism"><img src="cards/tile-explore.svg" width="32.5%" alt="Explore projects" /></a>
-<a href="mailto:aryan99dev00@gmail.com"><img src="cards/tile-connect.svg" width="32.5%" alt="Contact Aryan" /></a>
+<a href="https://github.com/aryan99dev/Portfolio"><img src="cards/tile-build.svg" width="32.5%" alt="Build — view the portfolio repository" /></a>
+<a href="https://github.com/aryan99dev?tab=repositories"><img src="cards/tile-explore.svg" width="32.5%" alt="Explore — all repositories" /></a>
+<a href="mailto:aryan99dev00@gmail.com"><img src="cards/tile-connect.svg" width="32.5%" alt="Connect — send an email" /></a>
 
-<img src="cards/contributions.svg" width="100%" alt="Monthly GitHub contributions, streak, active days and busiest day" />
+<img src="cards/contributions.svg" width="100%" alt="Monthly contributions, current streak, active days and busiest weekday" />
 
 </div>
 
 ## Selected work
 
-<a href="https://github.com/aryan99dev/Portfolio"><img src="cards/repo-1-portfolio.svg" width="100%" alt="Portfolio featured project card" /></a>
-<a href="https://github.com/aryan99dev/Prism"><img src="cards/repo-2-prism.svg" width="100%" alt="Prism featured project card" /></a>
-<a href="https://github.com/aryan99dev/Movie-App"><img src="cards/repo-3-movie-app.svg" width="100%" alt="Movie-App featured project card" /></a>
+<a href="https://github.com/aryan99dev/Portfolio"><img src="cards/repo-1-portfolio.svg" width="100%" alt="Portfolio repository: Next.js · React · TypeScript" /></a>
+<a href="https://github.com/aryan99dev/Prism"><img src="cards/repo-2-prism.svg" width="100%" alt="Prism repository: React · TypeScript · Vite · Tailwind CSS · Appwrite" /></a>
+<a href="https://github.com/aryan99dev/Movie-App"><img src="cards/repo-3-movie-app.svg" width="100%" alt="Movie-App repository: React · Vite" /></a>
 
 <div align="center">
-<img src="cards/contribution-graph.svg" width="100%" alt="GitHub contribution graph in Aryan's brand colour" />
+
+<img src="cards/contribution-graph.svg" width="100%" alt="Contribution graph — last 52 weeks" />
 
 [GitHub](https://github.com/aryan99dev) · [Portfolio repository](https://github.com/aryan99dev/Portfolio) · [Business email](mailto:aryan99dev00@gmail.com)
 
