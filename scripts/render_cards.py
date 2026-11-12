@@ -277,6 +277,12 @@ def _css_styles() -> str:
         "@keyframes arrowDiag{0%,100%{transform:translate(0,0)}50%{transform:translate(3px,-3px)}}"
         "@keyframes pulseDot{0%,100%{opacity:1}50%{opacity:0.35}}"
         "@keyframes pop{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}"
+        "@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}"
+        "@keyframes radar{0%{r:4.5px;opacity:0.85}100%{r:14px;opacity:0}}"
+        "@keyframes scanner{0%{transform:translateX(0px);opacity:0}15%{opacity:0.35}85%{opacity:0.35}100%{transform:translateX(820px);opacity:0}}"
+        "@keyframes lightBeam{0%{transform:translateX(-120px) skewX(-20deg)}35%,100%{transform:translateX(450px) skewX(-20deg)}}"
+        "@keyframes auraGlow{0%,100%{opacity:0.02;transform:scale(1)}50%{opacity:0.055;transform:scale(1.05)}}"
+        "@keyframes peakBreathe{0%,100%{opacity:1}50%{opacity:0.65}}"
         ".enter{animation:enter .75s cubic-bezier(.16,1,.3,1) both}"
         ".bar{transform-box:fill-box;transform-origin:50% 100%;animation:grow .8s cubic-bezier(.16,1,.3,1) both}"
         ".avatar-float{transform-box:fill-box;transform-origin:50% 50%;animation:float 4.2s ease-in-out infinite}"
@@ -284,7 +290,13 @@ def _css_styles() -> str:
         ".arrow-diag{display:inline-block;animation:arrowDiag 2.2s ease-in-out infinite}"
         ".pulse{animation:pulseDot 2.4s ease-in-out infinite}"
         ".pill-pop{transform-box:fill-box;transform-origin:50% 50%;animation:pop .6s cubic-bezier(.16,1,.3,1) both}"
-        "@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important} animate,animateTransform{display:none!important}}"
+        ".cursor{animation:blink 0.8s step-end infinite}"
+        ".aura{transform-box:fill-box;transform-origin:50% 50%;animation:auraGlow 4.2s ease-in-out infinite}"
+        ".radar-ping{transform-box:fill-box;transform-origin:50% 50%;animation:radar 2.4s cubic-bezier(.16,1,.3,1) infinite}"
+        ".beam{animation:lightBeam 5s ease-in-out infinite}"
+        ".scanner-line{animation:scanner 6s ease-in-out infinite}"
+        ".peak-pulse{animation:peakBreathe 3s ease-in-out infinite}"
+        "@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important} animate,animateTransform{display:none!important} .type-clip{width:100%!important}}"
     )
     return (
         f"<style>"
@@ -343,10 +355,12 @@ def hero_card() -> None:
     s = _svg_open(W, H, f"{FIRST_NAME} {LAST_NAME} — {ROLE_TAG}", bg_color=CARD_BG, rx=28)
     s += _enter(0.0)
 
-    # 1. Top tag: black square + all-caps tracking with subtle pulse
-    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.35;1" dur="2.4s" repeatCount="indefinite"/>'
+    # 1. Top tag: black square with radar ripple beacon + all-caps tracking
+    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.4;1" dur="2.4s" repeatCount="indefinite"/>'
+    radar_smil = "" if STATIC else '<animate attributeName="r" values="4.5;13;4.5" dur="2.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0;0.8" dur="2.4s" repeatCount="indefinite"/>'
     s += (
-        f'<rect x="48" y="44" width="9" height="9" rx="2" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</rect>\n'
+        f'<circle cx="52.5" cy="48.5" r="4.5" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</circle>\n'
+        f'<circle cx="52.5" cy="48.5" r="4.5" fill="none" stroke="{TEXT_PRI}" stroke-width="1.2" opacity="0.8" class="radar-ping">{radar_smil}</circle>\n'
         f'<text x="68" y="52" class="mono" font-size="11" font-weight="600" '
         f'letter-spacing="2.5" fill="{TEXT_MUT}">{escape(ROLE_TAG)}</text>\n'
     )
@@ -357,10 +371,21 @@ def hero_card() -> None:
         f'<text x="46" y="218" class="serif" font-size="78" font-style="italic" fill="{TEXT_PRI}">{escape(LAST_NAME)}</text>\n'
     )
 
-    # 3. Bio text in clean sans-serif
+    # 3. Bio text with typewriter reveal + infinite blinking cursor block
+    clip1_w = "420" if STATIC else "0"
+    clip2_w = "325" if STATIC else "0"
+    anim1 = "" if STATIC else '<animate attributeName="width" from="0" to="420" dur="1.1s" begin="0.3s" fill="freeze" calcMode="linear"/>'
+    anim2 = "" if STATIC else '<animate attributeName="width" from="0" to="325" dur="0.9s" begin="1.4s" fill="freeze" calcMode="linear"/>'
+    cur_anim = "" if STATIC else '<animate attributeName="opacity" values="1;0;1" dur="0.8s" begin="1.4s" repeatCount="indefinite"/>'
+
     s += (
-        f'<text x="48" y="272" class="sans" font-size="15.5" fill="{TEXT_SEC}">{escape(BIO_L1)}</text>\n'
-        f'<text x="48" y="296" class="sans" font-size="15.5" fill="{TEXT_SEC}">{escape(BIO_L2)}</text>\n'
+        f'<defs>\n'
+        f'<clipPath id="bio-clip-1"><rect class="type-clip" x="48" y="255" width="{clip1_w}" height="24">{anim1}</rect></clipPath>\n'
+        f'<clipPath id="bio-clip-2"><rect class="type-clip" x="48" y="280" width="{clip2_w}" height="24">{anim2}</rect></clipPath>\n'
+        f'</defs>\n'
+        f'<g clip-path="url(#bio-clip-1)"><text x="48" y="272" class="sans" font-size="15.5" fill="{TEXT_SEC}">{escape(BIO_L1)}</text></g>\n'
+        f'<g clip-path="url(#bio-clip-2)"><text x="48" y="296" class="sans" font-size="15.5" fill="{TEXT_SEC}">{escape(BIO_L2)}</text></g>\n'
+        f'<rect x="375" y="284" width="7" height="15" rx="1" fill="{TEXT_PRI}" class="cursor">{cur_anim}</rect>\n'
     )
 
     # 4. Link at bottom with animated arrow nudge
@@ -374,18 +399,21 @@ def hero_card() -> None:
 
     s += "</g>\n"
 
-    # 5. Right side: Embedded high-resolution anime portrait with breathing float
+    # 5. Right side: Embedded high-resolution anime portrait with breathing float and ambient aura
     if avatar_b64:
         img_w, img_h = 330, 330
         img_x = W - img_w - 35
         img_y = (H - img_h) // 2
         float_smil = "" if STATIC else '<animateTransform attributeName="transform" type="translate" values="0,0; 0,-6; 0,0" dur="4.5s" repeatCount="indefinite"/>'
+        aura_smil = "" if STATIC else '<animate attributeName="r" values="165;176;165" dur="4.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.02;0.05;0.02" dur="4.5s" repeatCount="indefinite"/>'
 
         s += _enter(0.2)
         s += (
-            f'<defs><clipPath id="hero-img-clip">'
-            f'<rect x="{img_x}" y="{img_y}" width="{img_w}" height="{img_h}" rx="24"/>'
-            f'</clipPath></defs>\n'
+            f'<defs>\n'
+            f'<filter id="hero-blur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="18"/></filter>\n'
+            f'<clipPath id="hero-img-clip"><rect x="{img_x}" y="{img_y}" width="{img_w}" height="{img_h}" rx="24"/></clipPath>\n'
+            f'</defs>\n'
+            f'<circle class="aura" cx="{img_x + img_w/2:.1f}" cy="{img_y + img_h/2:.1f}" r="168" fill="{TEXT_PRI}" opacity="0.02" filter="url(#hero-blur)">{aura_smil}</circle>\n'
             f'<g class="avatar-float">{float_smil}'
             f'<image href="data:image/png;base64,{avatar_b64}" '
             f'x="{img_x}" y="{img_y}" width="{img_w}" height="{img_h}" '
@@ -411,6 +439,26 @@ def tile_card(i: int, tile: tuple) -> None:
     W, H = 300, 330
 
     s = _svg_open(W, H, f"{label} tile", bg_color=bg_col, rx=26, stroke_color=stroke_col)
+
+    # Subtle infinite light beam sweep on dark tiles
+    if bg_col != WHITE_TILE and not STATIC:
+        s += (
+            f'<defs>\n'
+            f'<clipPath id="tile-clip-{i}"><rect width="{W}" height="{H}" rx="26"/></clipPath>\n'
+            f'<linearGradient id="shimmer-{i}" x1="0" y1="0" x2="1" y2="0">\n'
+            f'<stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>\n'
+            f'<stop offset="50%" stop-color="#ffffff" stop-opacity="0.08"/>\n'
+            f'<stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>\n'
+            f'</linearGradient>\n'
+            f'</defs>\n'
+            f'<g clip-path="url(#tile-clip-{i})">\n'
+            f'<rect class="beam" x="-120" y="-30" width="90" height="390" fill="url(#shimmer-{i})">\n'
+            f'<animateTransform attributeName="transform" type="translate" values="-150,0; 450,0; -150,0" '
+            f'dur="5.5s" begin="{i * 1.4:.1f}s" repeatCount="indefinite"/>\n'
+            f'</rect>\n'
+            f'</g>\n'
+        )
+
     s += _enter(0.25 + i * 0.12)
 
     # Top row: all-caps label + animated arrow
@@ -451,28 +499,38 @@ def contribution_card(st: dict) -> None:
     ─────────────────────
     Top Tag:    ■ CONTRIBUTION PULSE
     Title:      Activity Dashboard (Instrument Serif 38px)
-    Subtitle:   Real GitHub activity across the last 12 calendar months
+    Subtitle:   Real GitHub activity across the last 12 calendar months (Typewriter)
     Pills:      Day Streak, Active Days, Busiest Day in slate noir tones
-    Bars:       Solid pitch black (#09090b) with rounded top corners
+    Bars:       Solid pitch black (#09090b) with rounded top corners + peak crown shimmer
     """
     W, H = 920, 320
     s = _svg_open(W, H, "Contribution analytics", bg_color=CARD_BG, rx=28)
     s += _enter(0.65)
 
-    # 1. Top tag with live pulse
-    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.35;1" dur="2.4s" repeatCount="indefinite"/>'
+    # 1. Top tag with live pulse and radar ripple
+    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.4;1" dur="2.4s" repeatCount="indefinite"/>'
+    radar_smil = "" if STATIC else '<animate attributeName="r" values="4;12;4" dur="2.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0;0.8" dur="2.4s" repeatCount="indefinite"/>'
     s += (
-        f'<rect x="48" y="38" width="8" height="8" rx="2" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</rect>\n'
+        f'<circle cx="52" cy="42" r="4" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</circle>\n'
+        f'<circle cx="52" cy="42" r="4" fill="none" stroke="{TEXT_PRI}" stroke-width="1.2" opacity="0.8" class="radar-ping">{radar_smil}</circle>\n'
         f'<text x="66" y="46" class="mono" font-size="11" font-weight="600" '
         f'letter-spacing="2" fill="{TEXT_MUT}">CONTRIBUTION PULSE</text>\n'
     )
 
-    # 2. Title
+    # 2. Title & Subtitle with typewriter reveal
+    sub_text = "Real GitHub activity across the last 12 calendar months"
+    sub_w = "480" if STATIC else "0"
+    sub_anim = "" if STATIC else '<animate attributeName="width" from="0" to="480" dur="1.3s" begin="0.75s" fill="freeze" calcMode="linear"/>'
+    sub_cur = "" if STATIC else '<animate attributeName="opacity" values="1;0;1" dur="0.8s" begin="0.75s" repeatCount="indefinite"/>'
+
     s += (
         f'<text x="46" y="86" class="serif" font-size="36" fill="{TEXT_PRI}">'
         f'Activity <tspan font-style="italic">Dashboard</tspan></text>\n'
-        f'<text x="48" y="108" class="sans" font-size="13" fill="{TEXT_SEC}">'
-        f'Real GitHub activity across the last 12 calendar months</text>\n'
+        f'<defs>\n'
+        f'<clipPath id="sub-clip"><rect class="type-clip" x="48" y="96" width="{sub_w}" height="20">{sub_anim}</rect></clipPath>\n'
+        f'</defs>\n'
+        f'<g clip-path="url(#sub-clip)"><text x="48" y="108" class="sans" font-size="13" fill="{TEXT_SEC}">{escape(sub_text)}</text></g>\n'
+        f'<rect x="442" y="98" width="6" height="12" rx="1" fill="{TEXT_MUT}" class="cursor">{sub_cur}</rect>\n'
     )
 
     # 3. Stat pills on top-right with staggered pop entrance
@@ -498,25 +556,32 @@ def contribution_card(st: dict) -> None:
     cx, cy, cw, ch, gap = 48, 142, 824, 126, 12
     months = st["months"]
     bw     = (cw - gap * (len(months) - 1)) / len(months)
+    max_month_val = st["max_month"]
 
     # baseline
     s += f'<line x1="{cx}" y1="{cy+ch}" x2="{cx+cw}" y2="{cy+ch}" stroke="{CARD_STR}" stroke-width="1"/>\n'
 
     for k, (m, v) in enumerate(months):
-        bar_h = max(4.0, ch * v / st["max_month"]) if v else 4.0
+        bar_h = max(4.0, ch * v / max_month_val) if v else 4.0
         bx    = cx + k * (bw + gap)
         by    = cy + ch - bar_h
         fill  = TEXT_PRI if v else GRAPH_EMPTY
+        is_peak = (v == max_month_val and v > 0)
 
         # Static bar
         s += f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bw:.1f}" height="{bar_h:.1f}" rx="6" fill="{fill}"/>\n'
 
         if not STATIC and v:
             begin = f"{0.85 + k * 0.05:.2f}s"
+            peak_anim = ""
+            if is_peak:
+                # Infinite subtle crown pulse on the highest month
+                peak_anim = f'<animate attributeName="opacity" values="1;0.65;1" dur="2.8s" begin="{0.85 + k * 0.05 + 0.7:.2f}s" repeatCount="indefinite"/>'
             s += (
-                f'<rect x="{bx:.1f}" y="{cy+ch}" width="{bw:.1f}" height="0" rx="6" fill="{fill}">\n'
+                f'<rect class="bar{" peak-pulse" if is_peak else ""}" x="{bx:.1f}" y="{cy+ch}" width="{bw:.1f}" height="0" rx="6" fill="{fill}">\n'
                 f'<animate attributeName="height" from="0" to="{bar_h:.1f}" dur=".65s" begin="{begin}" fill="freeze"/>\n'
                 f'<animate attributeName="y" from="{cy+ch}" to="{by:.1f}" dur=".65s" begin="{begin}" fill="freeze"/>\n'
+                f'{peak_anim}'
                 f'</rect>\n'
             )
 
@@ -527,10 +592,6 @@ def contribution_card(st: dict) -> None:
             s += (
                 f'<text x="{bx+bw/2:.1f}" y="{by-6:.1f}" text-anchor="middle" '
                 f'class="sans"{count_opacity} font-size="11" font-weight="600" fill="{TEXT_PRI}">{v}{count_smil}</text>\n'
-            )
-            s += (
-                f'<text x="{bx+bw/2:.1f}" y="{by-6:.1f}" text-anchor="middle" '
-                f'class="sans" font-size="11" font-weight="600" fill="{TEXT_PRI}">{v}</text>\n'
             )
         # Month label below
         s += (
@@ -566,9 +627,10 @@ def repo_card(i: int, repo: tuple) -> None:
     s = _svg_open(W, H, f"{name} — featured repository", bg_color=CARD_BG, rx=24)
     s += _enter(1.3 + i * 0.18)
 
-    # Tag
+    # Tag with live pulse
+    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.4;1" dur="2.4s" repeatCount="indefinite"/>'
     s += (
-        f'<rect x="44" y="32" width="7" height="7" rx="1.5" fill="{accent}"/>\n'
+        f'<rect x="44" y="32" width="7" height="7" rx="1.5" fill="{accent}" class="pulse">{pulse_smil}</rect>\n'
         f'<text x="60" y="39" class="mono" font-size="10.5" font-weight="600" '
         f'letter-spacing="2" fill="{TEXT_MUT}">FEATURED REPOSITORY / 0{i}</text>\n'
     )
@@ -625,10 +687,12 @@ def graph_card(days: list[tuple[dt.date, int]]) -> None:
     s = _svg_open(W, H, "Contribution graph", bg_color=CARD_BG, rx=28)
     s += _enter(1.7)
 
-    # Tag & Title with live pulse
-    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.35;1" dur="2.4s" repeatCount="indefinite"/>'
+    # Tag & Title with live pulse and radar ripple
+    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.4;1" dur="2.4s" repeatCount="indefinite"/>'
+    radar_smil = "" if STATIC else '<animate attributeName="r" values="3.5;11;3.5" dur="2.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.8;0;0.8" dur="2.4s" repeatCount="indefinite"/>'
     s += (
-        f'<rect x="44" y="32" width="7" height="7" rx="1.5" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</rect>\n'
+        f'<circle cx="47.5" cy="35.5" r="3.5" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</circle>\n'
+        f'<circle cx="47.5" cy="35.5" r="3.5" fill="none" stroke="{TEXT_PRI}" stroke-width="1.2" opacity="0.8" class="radar-ping">{radar_smil}</circle>\n'
         f'<text x="60" y="39" class="mono" font-size="10.5" font-weight="600" '
         f'letter-spacing="2" fill="{TEXT_MUT}">CONSISTENCY MAP</text>\n'
         f'<text x="42" y="74" class="serif" font-size="32" fill="{TEXT_PRI}">'
@@ -639,6 +703,21 @@ def graph_card(days: list[tuple[dt.date, int]]) -> None:
 
     pitch, x0, y0 = 15.2, 44, 116
     last_month = None
+
+    # Sonar scanning beam across the 52-week activity map
+    if not STATIC:
+        s += (
+            f'<defs>\n'
+            f'<linearGradient id="scan-beam" x1="0" y1="0" x2="0" y2="1">\n'
+            f'<stop offset="0%" stop-color="{TEXT_PRI}" stop-opacity="0"/>\n'
+            f'<stop offset="50%" stop-color="{TEXT_PRI}" stop-opacity="0.18"/>\n'
+            f'<stop offset="100%" stop-color="{TEXT_PRI}" stop-opacity="0"/>\n'
+            f'</linearGradient>\n'
+            f'</defs>\n'
+            f'<line class="scanner-line" x1="{x0}" y1="{y0-14}" x2="{x0}" y2="{y0+7*pitch+6}" stroke="url(#scan-beam)" stroke-width="2">\n'
+            f'<animateTransform attributeName="transform" type="translate" values="0,0; 815,0; 0,0" dur="6.5s" repeatCount="indefinite"/>\n'
+            f'</line>\n'
+        )
 
     for k in range(total):
         d   = start + dt.timedelta(days=k)

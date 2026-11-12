@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="920" height="165" viewBox="0 0 920 165" role="img" aria-label="Portfolio — featured repository">
 <style>.serif{font-family:'Instrument Serif',Georgia,serif;}.sans{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}.mono{font-family:ui-monospace,'JetBrains Mono',SFMono-Regular,Menlo,Monaco,Consolas,monospace;}</style>
 <rect width="920" height="165" rx="24" fill="#ffffff" stroke="#e4e4e7" stroke-width="1"/>
-<g><rect x="44" y="32" width="7" height="7" rx="1.5" fill="#09090b"/>
+<g><rect x="44" y="32" width="7" height="7" rx="1.5" fill="#09090b" class="pulse"></rect>
 <text x="60" y="39" class="mono" font-size="10.5" font-weight="600" letter-spacing="2" fill="#71717a">FEATURED REPOSITORY / 01</text>
 <text x="42" y="80" class="serif" font-size="38" fill="#09090b">Portfolio</text>
 <text x="44" y="108" class="sans" font-size="14" fill="#3f3f46">Personal site built with Next.js and React, featuring modern UI and responsive layouts.</text>

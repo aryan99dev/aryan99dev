@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="920" height="240" viewBox="0 0 920 240" role="img" aria-label="Contribution graph">
 <style>.serif{font-family:'Instrument Serif',Georgia,serif;}.sans{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}.mono{font-family:ui-monospace,'JetBrains Mono',SFMono-Regular,Menlo,Monaco,Consolas,monospace;}</style>
 <rect width="920" height="240" rx="28" fill="#ffffff" stroke="#e4e4e7" stroke-width="1"/>
-<g><rect x="44" y="32" width="7" height="7" rx="1.5" fill="#09090b" class="pulse"></rect>
+<g><circle cx="47.5" cy="35.5" r="3.5" fill="#09090b" class="pulse"></circle>
+<circle cx="47.5" cy="35.5" r="3.5" fill="none" stroke="#09090b" stroke-width="1.2" opacity="0.8" class="radar-ping"></circle>
 <text x="60" y="39" class="mono" font-size="10.5" font-weight="600" letter-spacing="2" fill="#71717a">CONSISTENCY MAP</text>
 <text x="42" y="74" class="serif" font-size="32" fill="#09090b">Activity <tspan font-style="italic">Graph</tspan></text>
 <text x="44" y="94" class="sans" font-size="12.5" fill="#3f3f46">Daily contribution activity — last 52 weeks</text>
