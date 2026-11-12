@@ -6,6 +6,6 @@
 <text x="42" y="80" class="serif" font-size="38" fill="#09090b">Portfolio</text>
 <text x="44" y="108" class="sans" font-size="14" fill="#3f3f46">Personal site built with Next.js and React, featuring modern UI and responsive layouts.</text>
 <text x="44" y="136" class="mono" font-size="11.5" font-weight="500" fill="#09090b">Next.js · React · TypeScript</text>
-<text x="876" y="60" class="sans" font-size="22" font-weight="bold" fill="#09090b">&#x2192;</text>
+<g class="arrow-shift"><text x="876" y="60" class="sans" font-size="22" font-weight="bold" fill="#09090b">&#x2192;</text></g>
 </g>
 </svg>

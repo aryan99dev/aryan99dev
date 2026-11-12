@@ -272,9 +272,19 @@ def _css_styles() -> str:
     anim = "" if STATIC else (
         "@keyframes enter{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}"
         "@keyframes grow{from{transform:scaleY(0)}to{transform:scaleY(1)}}"
+        "@keyframes float{0%,100%{transform:translateY(0px)}50%{transform:translateY(-6px)}}"
+        "@keyframes arrowShift{0%,100%{transform:translateX(0)}50%{transform:translateX(4px)}}"
+        "@keyframes arrowDiag{0%,100%{transform:translate(0,0)}50%{transform:translate(3px,-3px)}}"
+        "@keyframes pulseDot{0%,100%{opacity:1}50%{opacity:0.35}}"
+        "@keyframes pop{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}"
         ".enter{animation:enter .75s cubic-bezier(.16,1,.3,1) both}"
         ".bar{transform-box:fill-box;transform-origin:50% 100%;animation:grow .8s cubic-bezier(.16,1,.3,1) both}"
-        "@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important} animate{display:none}}"
+        ".avatar-float{transform-box:fill-box;transform-origin:50% 50%;animation:float 4.2s ease-in-out infinite}"
+        ".arrow-shift{display:inline-block;animation:arrowShift 2.2s ease-in-out infinite}"
+        ".arrow-diag{display:inline-block;animation:arrowDiag 2.2s ease-in-out infinite}"
+        ".pulse{animation:pulseDot 2.4s ease-in-out infinite}"
+        ".pill-pop{transform-box:fill-box;transform-origin:50% 50%;animation:pop .6s cubic-bezier(.16,1,.3,1) both}"
+        "@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important} animate,animateTransform{display:none!important}}"
     )
     return (
         f"<style>"
@@ -333,14 +343,15 @@ def hero_card() -> None:
     s = _svg_open(W, H, f"{FIRST_NAME} {LAST_NAME} — {ROLE_TAG}", bg_color=CARD_BG, rx=28)
     s += _enter(0.0)
 
-    # 1. Top tag: black square + all-caps tracking
+    # 1. Top tag: black square + all-caps tracking with subtle pulse
+    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.35;1" dur="2.4s" repeatCount="indefinite"/>'
     s += (
-        f'<rect x="48" y="44" width="9" height="9" rx="2" fill="{TEXT_PRI}"/>\n'
+        f'<rect x="48" y="44" width="9" height="9" rx="2" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</rect>\n'
         f'<text x="68" y="52" class="mono" font-size="11" font-weight="600" '
         f'letter-spacing="2.5" fill="{TEXT_MUT}">{escape(ROLE_TAG)}</text>\n'
     )
 
-    # 2. Huge editorial serif name (stacked)
+    # 2. Huge editorial serif name (stacked) with staggered entrance
     s += (
         f'<text x="46" y="146" class="serif" font-size="78" fill="{TEXT_PRI}">{escape(FIRST_NAME)}</text>\n'
         f'<text x="46" y="218" class="serif" font-size="78" font-style="italic" fill="{TEXT_PRI}">{escape(LAST_NAME)}</text>\n'
@@ -352,29 +363,34 @@ def hero_card() -> None:
         f'<text x="48" y="296" class="sans" font-size="15.5" fill="{TEXT_SEC}">{escape(BIO_L2)}</text>\n'
     )
 
-    # 4. Link at bottom
+    # 4. Link at bottom with animated arrow nudge
+    arrow_smil = "" if STATIC else '<animateTransform attributeName="transform" type="translate" values="0,0; 3,-3; 0,0" dur="2.2s" repeatCount="indefinite"/>'
     s += (
         f'<text x="48" y="340" class="mono" font-size="13.5" fill="{TEXT_PRI}">{escape(WEBSITE)}</text>\n'
-        f'<text x="238" y="340" class="sans" font-size="14" font-weight="bold" fill="{TEXT_PRI}">&#x2197;</text>\n'
+        f'<g class="arrow-diag">{arrow_smil}'
+        f'<text x="238" y="340" class="sans" font-size="14" font-weight="bold" fill="{TEXT_PRI}">&#x2197;</text>'
+        f'</g>\n'
     )
 
     s += "</g>\n"
 
-    # 5. Right side: Embedded high-resolution anime portrait
-    # Placed seamlessly on the white paper card with gentle clip to match card's rx
+    # 5. Right side: Embedded high-resolution anime portrait with breathing float
     if avatar_b64:
         img_w, img_h = 330, 330
         img_x = W - img_w - 35
         img_y = (H - img_h) // 2
+        float_smil = "" if STATIC else '<animateTransform attributeName="transform" type="translate" values="0,0; 0,-6; 0,0" dur="4.5s" repeatCount="indefinite"/>'
 
         s += _enter(0.2)
         s += (
             f'<defs><clipPath id="hero-img-clip">'
             f'<rect x="{img_x}" y="{img_y}" width="{img_w}" height="{img_h}" rx="24"/>'
             f'</clipPath></defs>\n'
+            f'<g class="avatar-float">{float_smil}'
             f'<image href="data:image/png;base64,{avatar_b64}" '
             f'x="{img_x}" y="{img_y}" width="{img_w}" height="{img_h}" '
-            f'preserveAspectRatio="xMidYMid meet" clip-path="url(#hero-img-clip)"/>\n'
+            f'preserveAspectRatio="xMidYMid meet" clip-path="url(#hero-img-clip)"/>'
+            f'</g>\n'
             f'</g>\n'
         )
 
@@ -397,12 +413,15 @@ def tile_card(i: int, tile: tuple) -> None:
     s = _svg_open(W, H, f"{label} tile", bg_color=bg_col, rx=26, stroke_color=stroke_col)
     s += _enter(0.25 + i * 0.12)
 
-    # Top row: all-caps label + arrow
+    # Top row: all-caps label + animated arrow
+    arrow_smil = "" if STATIC else '<animateTransform attributeName="transform" type="translate" values="0,0; 4,0; 0,0" dur="2.2s" repeatCount="indefinite"/>'
     s += (
         f'<text x="28" y="44" class="mono" font-size="12" font-weight="600" '
         f'letter-spacing="2" fill="{text_col}" opacity="0.95">{escape(label)}</text>\n'
+        f'<g class="arrow-shift">{arrow_smil}'
         f'<text x="{W-28}" y="44" class="sans" font-size="18" font-weight="bold" '
-        f'text-anchor="end" fill="{text_col}">&#x2192;</text>\n'
+        f'text-anchor="end" fill="{text_col}">&#x2192;</text>'
+        f'</g>\n'
     )
 
     # Big Instrument Serif Metric
@@ -440,9 +459,10 @@ def contribution_card(st: dict) -> None:
     s = _svg_open(W, H, "Contribution analytics", bg_color=CARD_BG, rx=28)
     s += _enter(0.65)
 
-    # 1. Top tag
+    # 1. Top tag with live pulse
+    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.35;1" dur="2.4s" repeatCount="indefinite"/>'
     s += (
-        f'<rect x="48" y="38" width="8" height="8" rx="2" fill="{TEXT_PRI}"/>\n'
+        f'<rect x="48" y="38" width="8" height="8" rx="2" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</rect>\n'
         f'<text x="66" y="46" class="mono" font-size="11" font-weight="600" '
         f'letter-spacing="2" fill="{TEXT_MUT}">CONTRIBUTION PULSE</text>\n'
     )
@@ -455,7 +475,7 @@ def contribution_card(st: dict) -> None:
         f'Real GitHub activity across the last 12 calendar months</text>\n'
     )
 
-    # 3. Stat pills on top-right in monochrome noir style
+    # 3. Stat pills on top-right with staggered pop entrance
     badges = [
         (str(st["streak"]),      "DAY STREAK",      "#f4f4f5", "#09090b"),
         (str(st["active_days"]), "ACTIVE DAYS",      "#09090b", "#ffffff"),
@@ -463,12 +483,15 @@ def contribution_card(st: dict) -> None:
     ]
     for j, (val, lab, pill_bg, pill_fg) in enumerate(badges):
         bx = 520 + j * 126
+        pill_delay = f' style="animation-delay:{0.75 + j * 0.12:.2f}s"' if not STATIC else ""
         s += (
+            f'<g class="pill-pop"{pill_delay}>'
             f'<rect x="{bx}" y="44" width="118" height="52" rx="14" fill="{pill_bg}"/>\n'
             f'<text x="{bx+16}" y="67" class="sans" font-size="18" font-weight="bold" fill="{pill_fg}">'
             f'{escape(val)}</text>\n'
             f'<text x="{bx+16}" y="84" class="mono" font-size="9" font-weight="600" letter-spacing="1" fill="{pill_fg}">'
             f'{lab}</text>\n'
+            f'</g>'
         )
 
     # 4. Bar chart
@@ -497,8 +520,14 @@ def contribution_card(st: dict) -> None:
                 f'</rect>\n'
             )
 
-        # Count above bar
+        # Count above bar (fades in smoothly as bar lands)
         if v:
+            count_smil = "" if STATIC else f'<animate attributeName="opacity" from="0" to="1" dur=".25s" begin="{0.85 + k * 0.05 + 0.45:.2f}s" fill="freeze"/>'
+            count_opacity = ' opacity="0"' if not STATIC else ''
+            s += (
+                f'<text x="{bx+bw/2:.1f}" y="{by-6:.1f}" text-anchor="middle" '
+                f'class="sans"{count_opacity} font-size="11" font-weight="600" fill="{TEXT_PRI}">{v}{count_smil}</text>\n'
+            )
             s += (
                 f'<text x="{bx+bw/2:.1f}" y="{by-6:.1f}" text-anchor="middle" '
                 f'class="sans" font-size="11" font-weight="600" fill="{TEXT_PRI}">{v}</text>\n'
@@ -562,8 +591,13 @@ def repo_card(i: int, repo: tuple) -> None:
         f'{escape(stack)}</text>\n'
     )
 
-    # Top right arrow
-    s += f'<text x="{W-44}" y="60" class="sans" font-size="22" font-weight="bold" fill="{TEXT_PRI}">&#x2192;</text>\n'
+    # Top right animated arrow
+    arrow_smil = "" if STATIC else '<animateTransform attributeName="transform" type="translate" values="0,0; 4,0; 0,0" dur="2.2s" repeatCount="indefinite"/>'
+    s += (
+        f'<g class="arrow-shift">{arrow_smil}'
+        f'<text x="{W-44}" y="60" class="sans" font-size="22" font-weight="bold" fill="{TEXT_PRI}">&#x2192;</text>'
+        f'</g>\n'
+    )
 
     s += "</g>\n"
     _save(f"repo-{i}-{_slug(name)}.svg", s)
@@ -589,11 +623,12 @@ def graph_card(days: list[tuple[dt.date, int]]) -> None:
 
     W, H = 920, 240
     s = _svg_open(W, H, "Contribution graph", bg_color=CARD_BG, rx=28)
-    s += _enter(1.8)
+    s += _enter(1.7)
 
-    # Tag & Title
+    # Tag & Title with live pulse
+    pulse_smil = "" if STATIC else '<animate attributeName="opacity" values="1;0.35;1" dur="2.4s" repeatCount="indefinite"/>'
     s += (
-        f'<rect x="44" y="32" width="7" height="7" rx="1.5" fill="{TEXT_PRI}"/>\n'
+        f'<rect x="44" y="32" width="7" height="7" rx="1.5" fill="{TEXT_PRI}" class="pulse">{pulse_smil}</rect>\n'
         f'<text x="60" y="39" class="mono" font-size="10.5" font-weight="600" '
         f'letter-spacing="2" fill="{TEXT_MUT}">CONSISTENCY MAP</text>\n'
         f'<text x="42" y="74" class="serif" font-size="32" fill="{TEXT_PRI}">'
@@ -631,8 +666,14 @@ def graph_card(days: list[tuple[dt.date, int]]) -> None:
             f'<title>{d.isoformat()}: {c} contribution{"s" if c!=1 else ""}</title>'
         )
         if not STATIC and c > 0:
-            begin = f"{1.9 + col * 0.012:.3f}s"
-            s += f'<animate attributeName="opacity" values="0;1" dur=".25s" begin="{begin}" fill="freeze"/>'
+            begin = f"{1.8 + col * 0.012:.3f}s"
+            if lvl == 4:
+                s += (
+                    f'<animate attributeName="opacity" values="0;1" dur=".25s" begin="{begin}" fill="freeze"/>'
+                    f'<animate attributeName="opacity" values="1;0.7;1" dur="3s" begin="{2.8 + col * 0.02:.2f}s" repeatCount="indefinite"/>'
+                )
+            else:
+                s += f'<animate attributeName="opacity" values="0;1" dur=".25s" begin="{begin}" fill="freeze"/>'
         s += "</rect>\n"
 
     # Legend at bottom right
@@ -679,22 +720,51 @@ def _readme() -> str:
     )
 
 
-def _preview_html() -> str:
+def _preview_html(folder: str = "cards") -> str:
     names = (
         ["hero.svg"] + [t[0] for t in TILES] + ["contributions.svg"]
         + [f"repo-{i}-{_slug(r[0])}.svg" for i, r in enumerate(FEATURED, 1)]
         + ["contribution-graph.svg"]
     )
-    imgs = "".join(f'<img src="cards-static/{n}" alt="{n}">' for n in names)
+    imgs = "".join(f'<img src="{folder}/{n}" alt="{n}">' for n in names)
     return (
-        '<!doctype html><meta charset="utf-8"><title>Static card preview</title>'
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<title>Aryan Sharma — Profile Cards Preview</title>'
         '<style>'
-        'body{background:#09090b;margin:0;padding:24px}'
+        'body{background:#09090b;margin:0;padding:24px;font-family:-apple-system,sans-serif;color:#e4e4e7}'
+        '.toolbar{max-width:920px;margin:0 auto 20px;display:flex;justify-content:space-between;align-items:center;background:#18181b;padding:12px 20px;border-radius:14px;border:1px solid #27272a}'
+        '.btn{background:#27272a;color:#fff;border:1px solid #3f3f46;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:all 0.2s}'
+        '.btn:hover{background:#3f3f46}'
+        '.btn.active{background:#fff;color:#000;border-color:#fff}'
         '.w{max-width:920px;margin:auto;display:flex;flex-wrap:wrap;gap:14px}'
-        'img{width:100%}'
+        'img{width:100%;display:block;border-radius:28px}'
         'img[src*="tile-"]{width:calc(33.333% - 10px)}'
-        '</style>'
-        f'<div class="w">{imgs}</div>'
+        '</style></head><body>'
+        '<div class="toolbar">'
+        f'<div><strong>Preview Mode:</strong> <span id="mode-label">{"Static Frame (cards-static/)" if STATIC else "Live Animated (cards/)"}</span></div>'
+        '<div style="display:flex;gap:10px;">'
+        '<button class="btn" onclick="replay()">&#x21bb; Replay Animations</button>'
+        f'<button class="btn{" active" if not STATIC else ""}" id="btn-anim" onclick="setMode(\'cards\')">Live Animated</button>'
+        f'<button class="btn{" active" if STATIC else ""}" id="btn-static" onclick="setMode(\'cards-static\')">Static Frame</button>'
+        '</div></div>'
+        f'<div class="w" id="container">{imgs}</div>'
+        '<script>'
+        'function setMode(dir){'
+        'document.querySelectorAll("#container img").forEach(img=>{'
+        'const name=img.src.split("/").pop().split("?")[0];'
+        'img.src=dir+"/"+name+"?t="+Date.now();'
+        '});'
+        'document.getElementById("btn-anim").classList.toggle("active",dir==="cards");'
+        'document.getElementById("btn-static").classList.toggle("active",dir==="cards-static");'
+        'document.getElementById("mode-label").textContent=dir==="cards"?"Live Animated (cards/)":"Static Frame (cards-static/)";'
+        '}'
+        'function replay(){'
+        'document.querySelectorAll("#container img").forEach(img=>{'
+        'const src=img.src.split("?")[0];'
+        'img.src=src+"?t="+Date.now();'
+        '});'
+        '}'
+        '</script></body></html>'
     )
 
 # ═══════════════════════════════════════════════════════════════════ MAIN
@@ -732,11 +802,12 @@ def main() -> None:
     card_count = len(list(OUT.glob("*.svg")))
 
     if STATIC:
-        (ROOT / "preview.html").write_text(_preview_html(), encoding="utf-8")
+        (ROOT / "preview.html").write_text(_preview_html("cards-static"), encoding="utf-8")
         print(f"STATIC=1: {card_count} cards → {OUT.name}/   preview.html written (README untouched).")
     else:
         (ROOT / "README.md").write_text(_readme(), encoding="utf-8")
-        print(f"{card_count} cards → {OUT.name}/   README.md updated.")
+        (ROOT / "preview.html").write_text(_preview_html("cards"), encoding="utf-8")
+        print(f"{card_count} cards → {OUT.name}/   README.md & preview.html updated.")
 
     embedded = sorted(set(re.findall(r"font-family:'([^']+)'", FONT_CSS)))
     print(f"Embedded fonts : {embedded or ['none — system fallback']}")

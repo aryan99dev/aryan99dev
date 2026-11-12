@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="920" height="240" viewBox="0 0 920 240" role="img" aria-label="Contribution graph">
 <style>.serif{font-family:'Instrument Serif',Georgia,serif;}.sans{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}.mono{font-family:ui-monospace,'JetBrains Mono',SFMono-Regular,Menlo,Monaco,Consolas,monospace;}</style>
 <rect width="920" height="240" rx="28" fill="#ffffff" stroke="#e4e4e7" stroke-width="1"/>
-<g><rect x="44" y="32" width="7" height="7" rx="1.5" fill="#09090b"/>
+<g><rect x="44" y="32" width="7" height="7" rx="1.5" fill="#09090b" class="pulse"></rect>
 <text x="60" y="39" class="mono" font-size="10.5" font-weight="600" letter-spacing="2" fill="#71717a">CONSISTENCY MAP</text>
 <text x="42" y="74" class="serif" font-size="32" fill="#09090b">Activity <tspan font-style="italic">Graph</tspan></text>
 <text x="44" y="94" class="sans" font-size="12.5" fill="#3f3f46">Daily contribution activity — last 52 weeks</text>
@@ -386,6 +386,7 @@
 <rect x="834.4" y="131.2" width="12" height="12" rx="3" fill="#f4f4f5"><title>2026-11-09: 0 contributions</title></rect>
 <rect x="834.4" y="146.4" width="12" height="12" rx="3" fill="#f4f4f5"><title>2026-11-10: 0 contributions</title></rect>
 <rect x="834.4" y="161.6" width="12" height="12" rx="3" fill="#09090b"><title>2026-11-11: 6 contributions</title></rect>
+<rect x="834.4" y="176.8" width="12" height="12" rx="3" fill="#f4f4f5"><title>2026-11-12: 0 contributions</title></rect>
 <text x="704" y="225" class="mono" font-size="9" fill="#71717a">LESS</text>
 <rect x="740" y="216" width="11" height="11" rx="2.5" fill="#f4f4f5"/>
 <rect x="756" y="216" width="11" height="11" rx="2.5" fill="#d4d4d8"/>
