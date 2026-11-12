@@ -280,7 +280,8 @@ def _css_styles() -> str:
         "@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}"
         "@keyframes radar{0%{r:4.5px;opacity:0.85}100%{r:14px;opacity:0}}"
         "@keyframes scanner{0%{transform:translateX(0px);opacity:0}15%{opacity:0.35}85%{opacity:0.35}100%{transform:translateX(820px);opacity:0}}"
-        "@keyframes lightBeam{0%{transform:translateX(-120px) skewX(-20deg)}35%,100%{transform:translateX(450px) skewX(-20deg)}}"
+        "@keyframes lightBeamWide{0%{transform:translateX(0px)}35%,100%{transform:translateX(1510px)}}"
+        "@keyframes lightBeamTile{0%{transform:translateX(0px)}35%,100%{transform:translateX(620px)}}"
         "@keyframes auraGlow{0%,100%{opacity:0.02;transform:scale(1)}50%{opacity:0.055;transform:scale(1.05)}}"
         "@keyframes peakBreathe{0%,100%{opacity:1}50%{opacity:0.65}}"
         ".enter{animation:enter .75s cubic-bezier(.16,1,.3,1) both}"
@@ -293,7 +294,8 @@ def _css_styles() -> str:
         ".cursor{animation:blink 0.8s step-end infinite}"
         ".aura{transform-box:fill-box;transform-origin:50% 50%;animation:auraGlow 4.2s ease-in-out infinite}"
         ".radar-ping{transform-box:fill-box;transform-origin:50% 50%;animation:radar 2.4s cubic-bezier(.16,1,.3,1) infinite}"
-        ".beam{animation:lightBeam 5s ease-in-out infinite}"
+        ".beam-wide{animation:lightBeamWide 6.2s ease-in-out infinite}"
+        ".beam-tile{animation:lightBeamTile 5.2s ease-in-out infinite}"
         ".scanner-line{animation:scanner 6s ease-in-out infinite}"
         ".peak-pulse{animation:peakBreathe 3s ease-in-out infinite}"
         "@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important} animate,animateTransform{display:none!important} .type-clip{width:100%!important}}"
@@ -325,6 +327,56 @@ def _enter(delay: float) -> str:
     return f'<g class="enter" style="animation-delay:{delay:.2f}s">'
 
 
+def _card_shine(w: int, h: int, rx: int, card_id: str, bg_color: str, delay: float = 0.0) -> str:
+    if STATIC:
+        return ""
+    is_dark = (bg_color not in (WHITE_TILE, CARD_BG, "#ffffff", "white"))
+    
+    # Dark cards get a crisp silver-white ray; white cards get a subtle satin ink sweep
+    if is_dark:
+        stop_col = "#ffffff"
+        mid_op = "0.14"
+        edge_op = "0.03"
+    else:
+        stop_col = "#09090b"
+        mid_op = "0.055"
+        edge_op = "0.015"
+
+    is_tile = (w <= 350)
+    dur = 5.2 if is_tile else 6.2
+    beam_cls = "beam-tile" if is_tile else "beam-wide"
+    beam_w = 100 if is_tile else 190
+    beam_h = h + 120
+    x_start = -beam_w - 40
+    travel = 620 if is_tile else 1510
+    
+    # SMIL translation: 35% time to glide across, 65% rest time offscreen
+    smil = (
+        f'<animateTransform attributeName="transform" type="translate" '
+        f'values="0,0; {travel},0; {travel},0" keyTimes="0; 0.35; 1" '
+        f'dur="{dur}s" begin="{delay:.1f}s" repeatCount="indefinite"/>'
+    )
+    
+    return (
+        f'<defs>\n'
+        f'<clipPath id="{card_id}-clip"><rect width="{w}" height="{h}" rx="{rx}"/></clipPath>\n'
+        f'<linearGradient id="{card_id}-shine" x1="0" y1="0" x2="1" y2="0">\n'
+        f'<stop offset="0%" stop-color="{stop_col}" stop-opacity="0"/>\n'
+        f'<stop offset="35%" stop-color="{stop_col}" stop-opacity="{edge_op}"/>\n'
+        f'<stop offset="50%" stop-color="{stop_col}" stop-opacity="{mid_op}"/>\n'
+        f'<stop offset="65%" stop-color="{stop_col}" stop-opacity="{edge_op}"/>\n'
+        f'<stop offset="100%" stop-color="{stop_col}" stop-opacity="0"/>\n'
+        f'</linearGradient>\n'
+        f'</defs>\n'
+        f'<g clip-path="url(#{card_id}-clip)">\n'
+        f'<g class="{beam_cls}" style="animation-delay:{delay:.2f}s">\n'
+        f'{smil}\n'
+        f'<rect x="{x_start}" y="-40" width="{beam_w}" height="{beam_h}" fill="url(#{card_id}-shine)" transform="skewX(-22)"/>\n'
+        f'</g>\n'
+        f'</g>\n'
+    )
+
+
 def _save(name: str, svg: str) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / name).write_text(svg + "</svg>\n", encoding="utf-8")
@@ -353,6 +405,7 @@ def hero_card() -> None:
     avatar_b64 = get_avatar_b64()
 
     s = _svg_open(W, H, f"{FIRST_NAME} {LAST_NAME} — {ROLE_TAG}", bg_color=CARD_BG, rx=28)
+    s += _card_shine(W, H, 28, "hero-shine", CARD_BG, delay=0.0)
     s += _enter(0.0)
 
     # 1. Top tag: black square with radar ripple beacon + all-caps tracking
@@ -439,26 +492,7 @@ def tile_card(i: int, tile: tuple) -> None:
     W, H = 300, 330
 
     s = _svg_open(W, H, f"{label} tile", bg_color=bg_col, rx=26, stroke_color=stroke_col)
-
-    # Subtle infinite light beam sweep on dark tiles
-    if bg_col != WHITE_TILE and not STATIC:
-        s += (
-            f'<defs>\n'
-            f'<clipPath id="tile-clip-{i}"><rect width="{W}" height="{H}" rx="26"/></clipPath>\n'
-            f'<linearGradient id="shimmer-{i}" x1="0" y1="0" x2="1" y2="0">\n'
-            f'<stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>\n'
-            f'<stop offset="50%" stop-color="#ffffff" stop-opacity="0.08"/>\n'
-            f'<stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>\n'
-            f'</linearGradient>\n'
-            f'</defs>\n'
-            f'<g clip-path="url(#tile-clip-{i})">\n'
-            f'<rect class="beam" x="-120" y="-30" width="90" height="390" fill="url(#shimmer-{i})">\n'
-            f'<animateTransform attributeName="transform" type="translate" values="-150,0; 450,0; -150,0" '
-            f'dur="5.5s" begin="{i * 1.4:.1f}s" repeatCount="indefinite"/>\n'
-            f'</rect>\n'
-            f'</g>\n'
-        )
-
+    s += _card_shine(W, H, 26, f"tile-{i}-shine", bg_col, delay=0.6 + i * 0.5)
     s += _enter(0.25 + i * 0.12)
 
     # Top row: all-caps label + animated arrow
@@ -505,6 +539,7 @@ def contribution_card(st: dict) -> None:
     """
     W, H = 920, 320
     s = _svg_open(W, H, "Contribution analytics", bg_color=CARD_BG, rx=28)
+    s += _card_shine(W, H, 28, "contrib-shine", CARD_BG, delay=2.3)
     s += _enter(0.65)
 
     # 1. Top tag with live pulse and radar ripple
@@ -625,6 +660,7 @@ def repo_card(i: int, repo: tuple) -> None:
     W, H = 920, 165
 
     s = _svg_open(W, H, f"{name} — featured repository", bg_color=CARD_BG, rx=24)
+    s += _card_shine(W, H, 24, f"repo-{i}-shine", CARD_BG, delay=3.0 + (i - 1) * 0.5)
     s += _enter(1.3 + i * 0.18)
 
     # Tag with live pulse
@@ -685,6 +721,7 @@ def graph_card(days: list[tuple[dt.date, int]]) -> None:
 
     W, H = 920, 240
     s = _svg_open(W, H, "Contribution graph", bg_color=CARD_BG, rx=28)
+    s += _card_shine(W, H, 28, "graph-shine", CARD_BG, delay=4.7)
     s += _enter(1.7)
 
     # Tag & Title with live pulse and radar ripple
